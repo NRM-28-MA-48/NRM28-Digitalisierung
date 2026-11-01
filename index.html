@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GroupSync – Gemeinsame Dokumente & Projektübersicht</title>
+  <title>Nachrichten- und Redaktionsmedium (NRM)</title>
+  <!-- Dynamisches Favicon & Smartphone App-Icon -->
+  <link id="app-favicon" rel="icon" type="image/png" href="48er.png" />
+  <link id="app-touch-icon" rel="apple-touch-icon" href="48er.png" />
   <!-- Tailwind CSS (CDN) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- FontAwesome Icons (Lizenzfrei) -->
@@ -15,87 +18,152 @@
   <style>
     body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
     .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
-    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #fdba74; border-radius: 3px; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800">
+<body class="bg-orange-50/40 text-slate-800">
   <div id="root"></div>
 
   <script type="text/babel">
     const { useState, useEffect } = React;
 
+    // Eingebettetes, transparentes 48er-Vektor-Logo als sofortiger Fallback,
+    // falls 48er.png lokal oder auf GitHub noch nicht im selben Ordner liegt
+    const FALLBACK_48ER_SVG = "data:image/svg+xml;utf8," + encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 360" fill="none">
+        <text x="25" y="295" fill="#0d6efd" font-family="Arial, sans-serif" font-weight="900" font-style="italic" font-size="78">DIE</text>
+        <path d="M210 55 L95 205 L245 190 M195 95 L165 305" stroke="#0d6efd" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M315 165 C255 120 265 45 320 65 C335 72 340 90 340 90 C340 90 355 55 390 65 C435 78 415 145 350 175 C275 210 235 265 275 295 C315 320 395 295 390 235 C386 195 345 182 315 165 Z" stroke="#ef233c" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="385" y="295" fill="#0d6efd" font-family="Arial, sans-serif" font-weight="900" font-style="italic" font-size="72">ER</text>
+      </svg>
+    `);
+
     // --- INITIALE BEISPIELDATEN ---
     const INITIAL_DATA = {
-      categories: ["Allgemein", "Recherche & Daten", "Ausarbeitung", "Präsentation", "Organisation"],
+      categories: ["Allgemein", "Redaktion & Beiträge", "Recherche & Daten", "Layout & Medien", "Organisation"],
       members: [
-        { id: "m1", name: "Anna M.", role: "Projektleitung & Struktur", phone: "+436641234567", color: "bg-emerald-600" },
-        { id: "m2", name: "Lukas K.", role: "Datenanalyse & Tabellen", phone: "+436609876543", color: "bg-blue-600" },
-        { id: "m3", name: "Sarah W.", role: "Redaktion & Korrektur", phone: "+436761122334", color: "bg-purple-600" },
-        { id: "m4", name: "Max B.", role: "Layout & Grafiken", phone: "+436995566778", color: "bg-amber-600" }
+        { id: "m1", name: "Anna M.", role: "Chefredaktion & Koordination", phone: "+436641234567", color: "bg-orange-600" },
+        { id: "m2", name: "Lukas K.", role: "Recherche & Faktenprüfung", phone: "+436609876543", color: "bg-amber-600" },
+        { id: "m3", name: "Sarah W.", role: "Text & Lektorat", phone: "+436761122334", color: "bg-red-600" },
+        { id: "m4", name: "Max B.", role: "Grafik & Gestaltung", phone: "+436995566778", color: "bg-blue-600" }
       ],
       meetings: [
-        { id: "mt1", title: "Kick-Off & Aufgabenverteilung", date: "2026-11-02", time: "17:00", location: "Online / Zoom", type: "Treffen" },
-        { id: "mt2", title: "Zwischenstand-Besprechung", date: "2026-11-12", time: "18:30", location: "Seminarraum 3", type: "Treffen" },
-        { id: "mt3", title: "Finale Abgabe Gesamtdokument", date: "2026-11-25", time: "23:59", location: "Upload-Portal", type: "Abgabe" }
+        { id: "mt1", title: "Redaktionssitzung & Themenplanung", date: "2026-11-05", time: "17:00", location: "Online / Besprechungsraum", type: "Treffen" },
+        { id: "mt2", title: "Zwischenstand & Layout-Check", date: "2026-11-15", time: "18:30", location: "Redaktionsbüro", type: "Treffen" },
+        { id: "mt3", title: "Redaktionsschluss / Finale Abgabe", date: "2026-11-28", time: "23:59", location: "Upload-Portal", type: "Abgabe" }
       ],
       documents: [
         {
           id: "d1",
-          title: "Hauptbericht: Projektanalyse & Ergebnisse",
-          category: "Ausarbeitung",
+          title: "Hauptbeitrag: Aktuelle Projektanalyse & Bericht",
+          category: "Redaktion & Beiträge",
           deadline: "2026-11-20",
-          description: "Gemeinsamer Hauptbericht mit Einleitung, Methodik, Auswertung und Fazit.",
+          description: "Gemeinsamer Hauptartikel mit Einleitung, Hintergrunddaten, Interview und Fazit.",
           responsibilities: [
-            { memberId: "m1", task: "Kapitel 1: Einleitung & Zielsetzung" },
-            { memberId: "m2", task: "Kapitel 2: Datenauswertung & Statistik" },
-            { memberId: "m3", task: "Kapitel 3: Diskussion & Endkorrektur" },
-            { memberId: "m4", task: "Deckblatt, Grafiken & Formatierung" }
+            { memberId: "m1", task: "Kapitel 1: Leitartikel & Zielsetzung" },
+            { memberId: "m2", task: "Kapitel 2: Datenauswertung & Hintergrund" },
+            { memberId: "m3", task: "Kapitel 3: Feinschliff & Endlektorat" },
+            { memberId: "m4", task: "Titelbild, Infografiken & Layout" }
           ],
           workflow: [
-            { id: "w1", step: 1, title: "Grundstruktur & Einleitung anlegen", memberId: "m1", done: true, completedAt: "25.10.2026" },
-            { id: "w2", step: 2, title: "Rohdaten & Messwerte einfügen (wartet auf Schritt 1)", memberId: "m2", done: false, completedAt: null },
-            { id: "w3", step: 3, title: "Text ausformulieren & Korrekturlesen (wartet auf Schritt 2)", memberId: "m3", done: false, completedAt: null },
-            { id: "w4", step: 4, title: "Finales Layout & PDF-Export (wartet auf Schritt 3)", memberId: "m4", done: false, completedAt: null }
+            { id: "w1", step: 1, title: "Grundstruktur & Leitfaden anlegen", memberId: "m1", done: true, completedAt: "25.10.2026" },
+            { id: "w2", step: 2, title: "Recherche-Daten & Zahlen einfügen (wartet auf Schritt 1)", memberId: "m2", done: false, completedAt: null },
+            { id: "w3", step: 3, title: "Text ausformulieren & Lektorat (wartet auf Schritt 2)", memberId: "m3", done: false, completedAt: null },
+            { id: "w4", step: 4, title: "Finales Satz-Layout & PDF-Freigabe (wartet auf Schritt 3)", memberId: "m4", done: false, completedAt: null }
           ],
-          content: "# Hauptbericht: Projektanalyse\n\n## 1. Einleitung (Anna M.)\nDie Grundstruktur steht bereits. Hier wird das Ziel unserer Arbeit beschrieben...\n\n## 2. Datenauswertung (Lukas K.)\n[Hier bitte die Tabellen und Ergebnisse eintragen, sobald bereit]\n\n## 3. Diskussion & Fazit (Sarah W.)\n[Folgt nach der Datenauswertung]",
+          files: [],
+          content: "# Hauptbeitrag: Projektanalyse\n\n## 1. Einleitung (Anna M.)\nDie Grundstruktur steht bereits. Hier wird der Aufhänger unseres Beitrags beschrieben...\n\n## 2. Hintergrund & Zahlen (Lukas K.)\n[Hier bitte die recherchierten Daten eintragen oder als Datei anhängen]\n\n## 3. Fazit & Ausblick (Sarah W.)\n[Folgt nach der Datenauswertung]",
           notes: [
-            { id: "n1", author: "Anna M.", text: "Ich habe Kapitel 1 fertiggestellt. Lukas, du kannst jetzt mit den Daten starten!", time: "Gestern, 14:20" }
+            { id: "n1", author: "Anna M.", text: "Ich habe den ersten Teil fertiggestellt. Lukas, du kannst jetzt mit den Zahlen starten!", time: "Gestern, 14:20" }
           ]
         },
         {
           id: "d2",
-          title: "Literatur- & Quellenverzeichnis",
+          title: "Quellen- & Bildnachweis",
           category: "Recherche & Daten",
           deadline: "2026-11-10",
-          description: "Sammlung aller verwendeten Quellen und Richtlinien.",
+          description: "Sammlung aller verwendeten Quellen, Interviews und Bildrechte.",
           responsibilities: [
             { memberId: "m3", task: "Quellen prüfen & einheitlich formatieren" },
-            { memberId: "m1", task: "Fachliteratur ergänzen" }
+            { memberId: "m1", task: "Freigaben ergänzen" }
           ],
           workflow: [
-            { id: "w2_1", step: 1, title: "Literaturliste zusammentragen", memberId: "m1", done: true, completedAt: "24.10.2026" },
-            { id: "w2_2", step: 2, title: "Zitierweise prüfen & finalisieren", memberId: "m3", done: true, completedAt: "26.10.2026" }
+            { id: "w2_1", step: 1, title: "Quellenliste zusammentragen", memberId: "m1", done: true, completedAt: "24.10.2026" },
+            { id: "w2_2", step: 2, title: "Zitierweise & Bildrechte finalisieren", memberId: "m3", done: true, completedAt: "26.10.2026" }
           ],
-          content: "# Literaturverzeichnis\n\n- Müller et al. (2024): Grundlagen der Projektarbeit.\n- Schmidt (2025): Handbuch für Gruppenarbeiten.\n",
+          files: [],
+          content: "# Quellen- & Bildverzeichnis\n\n- Interne Erhebung (2026)\n- Fotodokumentation Redaktionsteam\n",
           notes: []
         }
       ]
     };
 
     function App() {
-      // Daten aus LocalStorage laden oder Initialdaten nutzen
+      const [logoSrc, setLogoSrc] = useState(FALLBACK_48ER_SVG);
+
+      // Lädt "48er.png" und entfernt automatisch den weißen Hintergrund (macht ihn 100% transparent)
+      useEffect(() => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const d = imgData.data;
+
+            // Weiße und fast weiße Pixel transparent schalten (weicher Übergang an den Kanten)
+            for (let i = 0; i < d.length; i += 4) {
+              const r = d[i], g = d[i + 1], b = d[i + 2];
+              if (r > 240 && g > 240 && b > 240) {
+                d[i + 3] = 0; // Komplett transparent
+              } else if (r > 215 && g > 215 && b > 215 && Math.abs(r - g) < 15 && Math.abs(r - b) < 15) {
+                // Sanftes Anti-Aliasing an den Rändern
+                const brightness = (r + g + b) / 3;
+                d[i + 3] = Math.max(0, Math.min(255, Math.round((240 - brightness) * 10)));
+              }
+            }
+            ctx.putImageData(imgData, 0, 0);
+            const transparentDataUrl = canvas.toDataURL("image/png");
+            setLogoSrc(transparentDataUrl);
+
+            // Auch als Browser-Favicon und Smartphone-Icon setzen
+            const fav = document.getElementById("app-favicon");
+            const touch = document.getElementById("app-touch-icon");
+            if (fav) fav.href = transparentDataUrl;
+            if (touch) touch.href = transparentDataUrl;
+          } catch (e) {
+            // Falls Browser lokale Canvas-Bearbeitung blockiert, Bild direkt verwenden
+            setLogoSrc("48er.png");
+          }
+        };
+        img.src = "48er.png";
+      }, []);
+
       const [data, setData] = useState(() => {
-        const saved = localStorage.getItem("groupsync_data_v1");
-        return saved ? JSON.parse(saved) : INITIAL_DATA;
+        const saved = localStorage.getItem("nrm_data_v1") || localStorage.getItem("groupsync_data_v2");
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            parsed.documents = (parsed.documents || []).map(d => ({ ...d, files: d.files || [] }));
+            return parsed;
+          } catch (e) {
+            return INITIAL_DATA;
+          }
+        }
+        return INITIAL_DATA;
       });
 
-      const [activeTab, setActiveTab] = useState("documents"); // documents | calendar | team | settings
+      const [activeTab, setActiveTab] = useState("documents");
       const [selectedCategory, setSelectedCategory] = useState("Alle");
       const [selectedDocId, setSelectedDocId] = useState(data.documents[0]?.id || null);
-      const [docViewMode, setDocViewMode] = useState("split"); // sheet | editor | split
+      const [docViewMode, setDocViewMode] = useState("split");
       const [notificationModal, setNotificationModal] = useState(null);
 
-      // Formular-States
+      // Formular-States (Neu anlegen)
       const [newDocModal, setNewDocModal] = useState(false);
       const [newDocForm, setNewDocForm] = useState({ title: "", category: "Allgemein", deadline: "", description: "" });
       const [newStepForm, setNewStepForm] = useState({ title: "", memberId: "" });
@@ -105,18 +173,32 @@
       const [newMemberForm, setNewMemberForm] = useState({ name: "", role: "", phone: "" });
       const [newCategoryName, setNewCategoryName] = useState("");
 
-      // Automatisch im Browser speichern
+      // Datei-Upload States
+      const [uploadMemberId, setUploadMemberId] = useState("");
+      const [uploadComment, setUploadComment] = useState("");
+      const [externalLinkForm, setExternalLinkForm] = useState({ name: "", url: "", memberId: "" });
+      const [showLinkForm, setShowLinkForm] = useState(false);
+
+      // Bearbeiten-States
+      const [editingMember, setEditingMember] = useState(null);
+      const [editingMeeting, setEditingMeeting] = useState(null);
+      const [editingDocMeta, setEditingDocMeta] = useState(null);
+      const [editingStep, setEditingStep] = useState(null);
+
       useEffect(() => {
-        localStorage.setItem("groupsync_data_v1", JSON.stringify(data));
+        try {
+          localStorage.setItem("nrm_data_v1", JSON.stringify(data));
+        } catch (err) {
+          alert("Hinweis: Der lokale Browser-Speicher ist fast voll (durch große Datei-Anhänge). Bitte nutze oben rechts 'Stand speichern', um alle Daten als Datei zu sichern.");
+        }
       }, [data]);
 
       const activeDoc = data.documents.find(d => d.id === selectedDocId) || data.documents[0];
 
-      // Hilfsfunktionen
-      const getMember = (id) => data.members.find(m => m.id === id) || { name: "Unbekannt", phone: "", color: "bg-slate-500", role: "" };
+      const getMember = (id) => data.members.find(m => m.id === id) || { name: "Redaktionsmitglied", phone: "", color: "bg-orange-500", role: "" };
 
       const getProgress = (doc) => {
-        if (!doc.workflow || doc.workflow.length === 0) return 0;
+        if (!doc || !doc.workflow || doc.workflow.length === 0) return 0;
         const doneCount = doc.workflow.filter(w => w.done).length;
         return Math.round((doneCount / doc.workflow.length) * 100);
       };
@@ -127,20 +209,206 @@
         return Math.ceil(diff / (1000 * 60 * 60 * 24));
       };
 
-      // WhatsApp & SMS Links generieren
+      const formatFileSize = (bytes) => {
+        if (!bytes) return "";
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+        return (bytes / 1048576).toFixed(2) + " MB";
+      };
+
+      // WhatsApp & SMS Links
       const sendWhatsApp = (phone, message) => {
-        const cleanPhone = phone.replace(/[^0-9+]/g, "").replace(/^\+/, "");
+        const cleanPhone = (phone || "").replace(/[^0-9+]/g, "").replace(/^\+/, "");
         const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
         window.open(url, "_blank");
       };
 
       const sendSMS = (phone, message) => {
-        const cleanPhone = phone.replace(/[^0-9+]/g, "");
+        const cleanPhone = (phone || "").replace(/[^0-9+,]/g, "");
         const url = `sms:${cleanPhone}?body=${encodeURIComponent(message)}`;
         window.location.href = url;
       };
 
-      // Abhängigkeits-Schritt umschalten (Person A -> Person B)
+      // --- DATEI HOCHLADEN & HERUNTERLADEN ---
+      const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file || !activeDoc) return;
+
+        if (file.size > 4 * 1024 * 1024) {
+          if (!confirm("Diese Datei ist größer als 4 MB. Für sehr große Dateien empfiehlt sich ein Cloud-Link oder der direkte JSON-Export ('Stand speichern'). Trotzdem einbetten?")) {
+            e.target.value = "";
+            return;
+          }
+        }
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const uploader = uploadMemberId ? getMember(uploadMemberId).name : "Redaktion";
+          const newFileEntry = {
+            id: "f_" + Date.now(),
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            dataUrl: ev.target.result,
+            uploadedBy: uploader,
+            comment: uploadComment || "Zur weiteren Bearbeitung",
+            uploadedAt: new Date().toLocaleString("de-DE"),
+            isExternal: false
+          };
+
+          setData(prev => ({
+            ...prev,
+            documents: prev.documents.map(d =>
+              d.id === activeDoc.id ? { ...d, files: [newFileEntry, ...(d.files || [])] } : d
+            )
+          }));
+          setUploadComment("");
+          e.target.value = "";
+        };
+        reader.readAsDataURL(file);
+      };
+
+      const handleAddExternalLink = (e) => {
+        e.preventDefault();
+        if (!externalLinkForm.name || !externalLinkForm.url || !activeDoc) return;
+        const uploader = externalLinkForm.memberId ? getMember(externalLinkForm.memberId).name : "Redaktion";
+        const newLinkEntry = {
+          id: "f_" + Date.now(),
+          name: externalLinkForm.name,
+          size: 0,
+          type: "link",
+          dataUrl: externalLinkForm.url,
+          uploadedBy: uploader,
+          comment: "Externer Cloud-Link",
+          uploadedAt: new Date().toLocaleString("de-DE"),
+          isExternal: true
+        };
+
+        setData(prev => ({
+          ...prev,
+          documents: prev.documents.map(d =>
+            d.id === activeDoc.id ? { ...d, files: [newLinkEntry, ...(d.files || [])] } : d
+          )
+        }));
+        setExternalLinkForm({ name: "", url: "", memberId: "" });
+        setShowLinkForm(false);
+      };
+
+      const deleteFile = (fileId) => {
+        if (!confirm("Diesen Datei-Anhang wirklich entfernen?")) return;
+        setData(prev => ({
+          ...prev,
+          documents: prev.documents.map(d =>
+            d.id === activeDoc.id ? { ...d, files: (d.files || []).filter(f => f.id !== fileId) } : d
+          )
+        }));
+      };
+
+      // --- BEARBEITEN-FUNKTIONEN ---
+      const saveEditedMember = (e) => {
+        e.preventDefault();
+        if (!editingMember || !editingMember.name) return;
+        setData(prev => ({
+          ...prev,
+          members: prev.members.map(m => m.id === editingMember.id ? editingMember : m)
+        }));
+        setEditingMember(null);
+      };
+
+      const saveEditedMeeting = (e) => {
+        e.preventDefault();
+        if (!editingMeeting || !editingMeeting.title) return;
+        setData(prev => ({
+          ...prev,
+          meetings: prev.meetings.map(m => m.id === editingMeeting.id ? editingMeeting : m)
+        }));
+        setEditingMeeting(null);
+      };
+
+      const saveEditedDocMeta = (e) => {
+        e.preventDefault();
+        if (!editingDocMeta || !editingDocMeta.title) return;
+        setData(prev => ({
+          ...prev,
+          documents: prev.documents.map(d =>
+            d.id === editingDocMeta.id
+              ? { ...d, title: editingDocMeta.title, category: editingDocMeta.category, deadline: editingDocMeta.deadline, description: editingDocMeta.description }
+              : d
+          )
+        }));
+        setEditingDocMeta(null);
+      };
+
+      const saveEditedStep = (e) => {
+        e.preventDefault();
+        if (!editingStep || !editingStep.title) return;
+        setData(prev => ({
+          ...prev,
+          documents: prev.documents.map(d => {
+            if (d.id !== activeDoc.id) return d;
+            return {
+              ...d,
+              workflow: d.workflow.map(w => w.id === editingStep.id ? { ...w, title: editingStep.title, memberId: editingStep.memberId } : w)
+            };
+          })
+        }));
+        setEditingStep(null);
+      };
+
+      // --- LÖSCH-FUNKTIONEN ---
+      const deleteMember = (memberId, memberName) => {
+        if (!confirm(`Möchtest du "${memberName}" wirklich aus den Kontakten löschen?`)) return;
+        setData(prev => ({
+          ...prev,
+          members: prev.members.filter(m => m.id !== memberId),
+          documents: prev.documents.map(doc => ({
+            ...doc,
+            responsibilities: doc.responsibilities.filter(r => r.memberId !== memberId),
+            workflow: doc.workflow.filter(w => w.memberId !== memberId)
+          }))
+        }));
+      };
+
+      const deleteDocument = (docId, docTitle) => {
+        if (!confirm(`Dokument "${docTitle}" wirklich unwiderruflich löschen?`)) return;
+        setData(prev => {
+          const remaining = prev.documents.filter(d => d.id !== docId);
+          if (selectedDocId === docId) {
+            setSelectedDocId(remaining[0]?.id || null);
+          }
+          return { ...prev, documents: remaining };
+        });
+      };
+
+      const deleteWorkflowStep = (stepId) => {
+        setData(prev => ({
+          ...prev,
+          documents: prev.documents.map(d => {
+            if (d.id !== activeDoc.id) return d;
+            return { ...d, workflow: d.workflow.filter(w => w.id !== stepId) };
+          })
+        }));
+      };
+
+      const deleteResponsibility = (index) => {
+        setData(prev => ({
+          ...prev,
+          documents: prev.documents.map(d => {
+            if (d.id !== activeDoc.id) return d;
+            return { ...d, responsibilities: d.responsibilities.filter((_, i) => i !== index) };
+          })
+        }));
+      };
+
+      const deleteMeeting = (meetingId) => {
+        if (!confirm("Diesen Termin wirklich löschen?")) return;
+        setData(prev => ({
+          ...prev,
+          meetings: prev.meetings.filter(m => m.id !== meetingId)
+        }));
+      };
+
+      // Abhängigkeits-Schritt umschalten
       const toggleWorkflowStep = (docId, stepIndex) => {
         setData(prev => {
           const docs = prev.documents.map(doc => {
@@ -148,7 +416,6 @@
             const newWorkflow = [...doc.workflow];
             const currentStep = newWorkflow[stepIndex];
 
-            // Prüfen, ob vorheriger Schritt erledigt ist
             if (stepIndex > 0 && !newWorkflow[stepIndex - 1].done && !currentStep.done) {
               alert(`Abhängigkeit beachten: Schritt ${stepIndex} (${getMember(newWorkflow[stepIndex - 1].memberId).name}) muss zuerst abgeschlossen werden!`);
               return doc;
@@ -161,7 +428,6 @@
               completedAt: nowDone ? new Date().toLocaleDateString("de-DE") : null
             };
 
-            // Wenn erledigt und es eine nächste Person (Person B) gibt -> Benachrichtigung anbieten!
             if (nowDone && stepIndex + 1 < newWorkflow.length) {
               const nextStep = newWorkflow[stepIndex + 1];
               const personA = getMember(currentStep.memberId);
@@ -169,7 +435,7 @@
               setNotificationModal({
                 title: "Vorarbeit erledigt! Nächste Person benachrichtigen?",
                 recipient: personB,
-                message: `Hallo ${personB.name}! 👋\n${personA.name} hat gerade den Schritt "${currentStep.title}" im Dokument "${doc.title}" fertiggestellt.\n\nDu kannst jetzt mit deinem Teil starten: "${nextStep.title}".\nAbgabetermin ist der ${doc.deadline}.`
+                message: `Hallo ${personB.name}! 👋\n${personA.name} hat gerade den Schritt "${currentStep.title}" im Beitrag "${doc.title}" (NRM) fertiggestellt.\n\nDu kannst jetzt die aktuelle Datei herunterladen und mit deinem Teil starten: "${nextStep.title}".\nAbgabetermin ist der ${doc.deadline}.`
               });
             }
 
@@ -179,7 +445,6 @@
         });
       };
 
-      // Dokument-Text aktualisieren
       const updateDocContent = (content) => {
         setData(prev => ({
           ...prev,
@@ -187,7 +452,6 @@
         }));
       };
 
-      // Neuen Workflow-Schritt hinzufügen
       const addWorkflowStep = (e) => {
         e.preventDefault();
         if (!newStepForm.title || !newStepForm.memberId) return;
@@ -212,7 +476,6 @@
         setNewStepForm({ title: "", memberId: "" });
       };
 
-      // Neue Zuständigkeit hinzufügen
       const addResponsibility = (e) => {
         e.preventDefault();
         if (!newRespForm.task || !newRespForm.memberId) return;
@@ -229,7 +492,6 @@
         setNewRespForm({ task: "", memberId: "" });
       };
 
-      // Notiz hinzufügen
       const addNote = (e) => {
         e.preventDefault();
         if (!newNoteText.trim()) return;
@@ -239,14 +501,13 @@
             if (d.id !== activeDoc.id) return d;
             return {
               ...d,
-              notes: [{ id: "n_" + Date.now(), author: "Teammitglied", text: newNoteText, time: new Date().toLocaleString("de-DE") }, ...d.notes]
+              notes: [{ id: "n_" + Date.now(), author: "Redaktion", text: newNoteText, time: new Date().toLocaleString("de-DE") }, ...d.notes]
             };
           })
         }));
         setNewNoteText("");
       };
 
-      // Neues Dokument anlegen
       const createNewDocument = (e) => {
         e.preventDefault();
         if (!newDocForm.title) return;
@@ -255,10 +516,11 @@
           title: newDocForm.title,
           category: newDocForm.category,
           deadline: newDocForm.deadline || "2026-12-01",
-          description: newDocForm.description || "Gemeinsames Dokument",
+          description: newDocForm.description || "Gemeinsames Redaktionsdokument",
           responsibilities: [],
           workflow: [],
-          content: `# ${newDocForm.title}\n\nHier gemeinsam schreiben...`,
+          files: [],
+          content: `# ${newDocForm.title}\n\nHier gemeinsam schreiben oder rechts Dateien zur Weiterbearbeitung hochladen...`,
           notes: []
         };
         setData(prev => ({ ...prev, documents: [...prev.documents, newDoc] }));
@@ -267,17 +529,15 @@
         setNewDocForm({ title: "", category: "Allgemein", deadline: "", description: "" });
       };
 
-      // Daten als JSON exportieren (zum Teilen per WhatsApp/GitHub)
       const exportData = () => {
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `groupsync-stand-${new Date().toISOString().slice(0,10)}.json`;
+        a.download = `NRM-Projektstand-${new Date().toISOString().slice(0,10)}.json`;
         a.click();
       };
 
-      // Daten importieren
       const importData = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -285,10 +545,11 @@
         reader.onload = (event) => {
           try {
             const imported = JSON.parse(event.target.result);
+            imported.documents = (imported.documents || []).map(d => ({ ...d, files: d.files || [] }));
             setData(imported);
-            alert("Projektstand erfolgreich geladen!");
+            alert("NRM-Projektstand inklusive aller Dateien erfolgreich geladen!");
           } catch (err) {
-            alert("Ungültige Datei.");
+            alert("Ungültige Projekt-Datei.");
           }
         };
         reader.readAsText(file);
@@ -299,36 +560,57 @@
         : data.documents.filter(d => d.category === selectedCategory);
 
       return (
-        <div className="min-h-screen flex flex-col bg-slate-100">
-          {/* TOP NAVIGATION */}
-          <header className="bg-slate-900 text-white shadow-md sticky top-0 z-30">
+        <div className="min-h-screen flex flex-col bg-orange-50/30">
+          {/* TOP NAVIGATION IN ORANGE */}
+          <header className="bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 text-white shadow-md sticky top-0 z-30 border-b border-orange-700/20">
             <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center font-bold text-xl shadow">
-                  <i className="fa-solid fa-people-group"></i>
+              <div className="flex items-center gap-3.5">
+                {/* 48er-Icon mit transparentem Hintergrund auf hellem Badge für optimalen Kontrast */}
+                <div className="w-14 h-12 rounded-2xl bg-white/95 backdrop-blur px-1.5 py-1 flex items-center justify-center shadow-md border border-orange-200 shrink-0">
+                  <img
+                    src={logoSrc}
+                    alt="Die 48er Logo"
+                    className="max-h-full max-w-full object-contain drop-shadow-sm"
+                  />
                 </div>
                 <div>
-                  <h1 className="font-bold text-lg leading-tight">GroupSync</h1>
-                  <p className="text-xs text-slate-400">Dokumente, Abhängigkeiten & WhatsApp/SMS-Reminder</p>
+                  <h1 className="font-extrabold text-lg sm:text-xl leading-tight tracking-tight text-white drop-shadow-sm">
+                    Nachrichten- und Redaktionsmedium (NRM)
+                  </h1>
+                  <p className="text-xs text-orange-100 font-medium">
+                    Redaktionsplanung, Datei-Austausch, Abhängigkeiten & WhatsApp/SMS-Reminder
+                  </p>
                 </div>
               </div>
 
-              <nav className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl">
+              <nav className="flex items-center gap-1 bg-orange-900/30 backdrop-blur-sm p-1 rounded-xl border border-white/15">
                 <button
                   onClick={() => setActiveTab("documents")}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${activeTab === "documents" ? "bg-emerald-500 text-white" : "text-slate-300 hover:text-white"}`}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
+                    activeTab === "documents"
+                      ? "bg-white text-orange-700 shadow-sm"
+                      : "text-orange-50 hover:bg-white/10"
+                  }`}
                 >
-                  <i className="fa-solid fa-file-lines mr-1.5"></i>Dokumente & Steckbriefe
+                  <i className="fa-solid fa-file-lines mr-1.5"></i>Dokumente & Dateien
                 </button>
                 <button
                   onClick={() => setActiveTab("calendar")}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${activeTab === "calendar" ? "bg-emerald-500 text-white" : "text-slate-300 hover:text-white"}`}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
+                    activeTab === "calendar"
+                      ? "bg-white text-orange-700 shadow-sm"
+                      : "text-orange-50 hover:bg-white/10"
+                  }`}
                 >
                   <i className="fa-solid fa-calendar-check mr-1.5"></i>Treffen & Abgaben
                 </button>
                 <button
                   onClick={() => setActiveTab("team")}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${activeTab === "team" ? "bg-emerald-500 text-white" : "text-slate-300 hover:text-white"}`}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
+                    activeTab === "team"
+                      ? "bg-white text-orange-700 shadow-sm"
+                      : "text-orange-50 hover:bg-white/10"
+                  }`}
                 >
                   <i className="fa-solid fa-users mr-1.5"></i>Team & Kontakte
                 </button>
@@ -337,13 +619,13 @@
               <div className="flex items-center gap-2">
                 <button
                   onClick={exportData}
-                  title="Projektstand als Datei speichern & mit Gruppe teilen"
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs rounded-lg border border-slate-700 flex items-center gap-1.5"
+                  title="Kompletten Projektstand (inkl. hochgeladener Dateien) speichern & teilen"
+                  className="px-3 py-1.5 bg-orange-950/40 hover:bg-orange-950/60 text-white text-xs font-medium rounded-lg border border-white/20 flex items-center gap-1.5 transition"
                 >
-                  <i className="fa-solid fa-download text-emerald-400"></i> Stand speichern
+                  <i className="fa-solid fa-download text-amber-200"></i> Stand speichern
                 </button>
-                <label className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs rounded-lg border border-slate-700 flex items-center gap-1.5 cursor-pointer">
-                  <i className="fa-solid fa-upload text-blue-400"></i> Stand laden
+                <label className="px-3 py-1.5 bg-orange-950/40 hover:bg-orange-950/60 text-white text-xs font-medium rounded-lg border border-white/20 flex items-center gap-1.5 cursor-pointer transition">
+                  <i className="fa-solid fa-upload text-amber-200"></i> Stand laden
                   <input type="file" accept=".json" onChange={importData} className="hidden" />
                 </label>
               </div>
@@ -352,17 +634,17 @@
 
           {/* MAIN CONTENT */}
           <main className="flex-1 max-w-7xl w-full mx-auto p-4">
-            {/* TAB 1: DOKUMENTE & ÜBERSICHTSBLATT */}
+            {/* TAB 1: DOKUMENTE, ÜBERSICHTSBLATT & DATEI-AUSTAUSCH */}
             {activeTab === "documents" && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* LINKE SEITENLEISTE: KATEGORIEN & DOKUMENTENLISTE */}
+                {/* LINKE SEITENLEISTE */}
                 <div className="lg:col-span-3 space-y-4">
-                  <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+                  <div className="bg-white rounded-2xl p-4 shadow-sm border border-orange-200/70">
                     <div className="flex items-center justify-between mb-3">
-                      <h2 className="font-bold text-sm uppercase tracking-wider text-slate-500">Kategorien</h2>
+                      <h2 className="font-bold text-sm uppercase tracking-wider text-orange-700">Kategorien</h2>
                       <button
                         onClick={() => setNewDocModal(true)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-medium flex items-center gap-1"
+                        className="bg-orange-600 hover:bg-orange-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-semibold flex items-center gap-1 shadow-sm transition"
                       >
                         <i className="fa-solid fa-plus"></i> Neues Dok
                       </button>
@@ -371,7 +653,11 @@
                     <div className="flex flex-wrap gap-1.5 mb-4">
                       <button
                         onClick={() => setSelectedCategory("Alle")}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-medium ${selectedCategory === "Alle" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                          selectedCategory === "Alle"
+                            ? "bg-orange-600 text-white shadow-sm"
+                            : "bg-orange-50 text-slate-700 hover:bg-orange-100"
+                        }`}
                       >
                         Alle ({data.documents.length})
                       </button>
@@ -379,14 +665,17 @@
                         <button
                           key={cat}
                           onClick={() => setSelectedCategory(cat)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-medium ${selectedCategory === cat ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                            selectedCategory === cat
+                              ? "bg-orange-600 text-white shadow-sm"
+                              : "bg-orange-50 text-slate-700 hover:bg-orange-100"
+                          }`}
                         >
                           {cat}
                         </button>
                       ))}
                     </div>
 
-                    {/* Neue Kategorie hinzufügen */}
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
@@ -402,29 +691,30 @@
                         placeholder="Neue Kategorie..."
                         value={newCategoryName}
                         onChange={e => setNewCategoryName(e.target.value)}
-                        className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200"
+                        className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
                       />
-                      <button type="submit" className="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 rounded-lg text-xs font-bold">+</button>
+                      <button type="submit" className="px-2.5 py-1.5 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-lg text-xs font-bold">+</button>
                     </form>
 
-                    <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 mb-2">Dokumente</h3>
+                    <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 mb-2">Beiträge & Dokumente</h3>
                     <div className="space-y-2">
                       {filteredDocs.map(doc => {
                         const prog = getProgress(doc);
                         const days = getDaysLeft(doc.deadline);
                         const isSelected = activeDoc && activeDoc.id === doc.id;
+                        const fileCount = (doc.files || []).length;
                         return (
                           <div
                             key={doc.id}
                             onClick={() => setSelectedDocId(doc.id)}
                             className={`p-3 rounded-xl border cursor-pointer transition ${
                               isSelected
-                                ? "bg-emerald-50/70 border-emerald-500 shadow-sm"
-                                : "bg-white border-slate-200 hover:border-slate-300"
+                                ? "bg-orange-50/90 border-orange-500 shadow-sm ring-1 ring-orange-500/30"
+                                : "bg-white border-slate-200 hover:border-orange-300"
                             }`}
                           >
                             <div className="flex items-center justify-between gap-2 mb-1">
-                              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800">
                                 {doc.category}
                               </span>
                               <span className={`text-[11px] font-semibold ${days < 3 ? "text-red-600" : "text-slate-500"}`}>
@@ -434,11 +724,14 @@
                             </div>
                             <h4 className="font-bold text-sm text-slate-800 mb-2">{doc.title}</h4>
                             <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                              <div className="bg-emerald-500 h-full transition-all" style={{ width: `${prog}%` }}></div>
+                              <div className="bg-orange-500 h-full transition-all" style={{ width: `${prog}%` }}></div>
                             </div>
-                            <div className="flex justify-between items-center mt-1 text-[11px] text-slate-500">
-                              <span>Fortschritt</span>
-                              <span className="font-bold text-slate-700">{prog}%</span>
+                            <div className="flex justify-between items-center mt-1.5 text-[11px] text-slate-500">
+                              <span>
+                                <i className="fa-solid fa-paperclip mr-1 text-orange-600"></i>
+                                {fileCount} {fileCount === 1 ? "Datei" : "Dateien"}
+                              </span>
+                              <span className="font-bold text-orange-700">{prog}%</span>
                             </div>
                           </div>
                         );
@@ -447,18 +740,18 @@
                   </div>
                 </div>
 
-                {/* RECHTER HAUPTBEREICH: ÜBERSICHTSBLATT (STECKBRIEF) & EDITOR */}
+                {/* RECHTER HAUPTBEREICH */}
                 {activeDoc ? (
                   <div className="lg:col-span-9 space-y-6">
-                    {/* KOPFZEILE DES DOKUMENTS */}
-                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+                    {/* DOKUMENT KOPFZEILE INKL. BEARBEITEN & LÖSCHEN */}
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-orange-200/70 flex flex-wrap items-center justify-between gap-4">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-xs font-semibold">
+                          <span className="px-2.5 py-0.5 bg-orange-100 text-orange-800 rounded-full text-xs font-semibold">
                             {activeDoc.category}
                           </span>
                           <span className="text-xs text-slate-500">
-                            <i className="fa-solid fa-calendar-day mr-1"></i>
+                            <i className="fa-solid fa-calendar-day mr-1 text-orange-600"></i>
                             Abgabe: <strong>{activeDoc.deadline}</strong> ({getDaysLeft(activeDoc.deadline)} Tage übrig)
                           </span>
                         </div>
@@ -466,51 +759,74 @@
                         <p className="text-sm text-slate-600">{activeDoc.description}</p>
                       </div>
 
-                      {/* ANSICHTS-UMSCHALTER */}
-                      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 bg-orange-50 p-1 rounded-xl border border-orange-200/60">
+                          <button
+                            onClick={() => setDocViewMode("sheet")}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                              docViewMode === "sheet" ? "bg-orange-600 shadow text-white" : "text-slate-600 hover:text-orange-700"
+                            }`}
+                          >
+                            <i className="fa-solid fa-clipboard-list mr-1"></i> Steckbrief
+                          </button>
+                          <button
+                            onClick={() => setDocViewMode("split")}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                              docViewMode === "split" ? "bg-orange-600 shadow text-white" : "text-slate-600 hover:text-orange-700"
+                            }`}
+                          >
+                            <i className="fa-solid fa-columns mr-1"></i> Split
+                          </button>
+                          <button
+                            onClick={() => setDocViewMode("editor")}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                              docViewMode === "editor" ? "bg-orange-600 shadow text-white" : "text-slate-600 hover:text-orange-700"
+                            }`}
+                          >
+                            <i className="fa-solid fa-folder-open mr-1"></i> Dateien & Editor
+                          </button>
+                        </div>
+
                         <button
-                          onClick={() => setDocViewMode("sheet")}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${docViewMode === "sheet" ? "bg-white shadow text-slate-900" : "text-slate-600"}`}
+                          onClick={() => setEditingDocMeta({ ...activeDoc })}
+                          title="Titel, Kategorie oder Abgabetermin bearbeiten"
+                          className="p-2 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-xl text-xs border border-orange-200/60"
                         >
-                          <i className="fa-solid fa-clipboard-list mr-1"></i> Nur Übersichtsblatt
+                          <i className="fa-solid fa-pen"></i>
                         </button>
                         <button
-                          onClick={() => setDocViewMode("split")}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${docViewMode === "split" ? "bg-white shadow text-slate-900" : "text-slate-600"}`}
+                          onClick={() => deleteDocument(activeDoc.id, activeDoc.title)}
+                          title="Dieses Dokument löschen"
+                          className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs"
                         >
-                          <i className="fa-solid fa-columns mr-1"></i> Beides (Split)
-                        </button>
-                        <button
-                          onClick={() => setDocViewMode("editor")}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${docViewMode === "editor" ? "bg-white shadow text-slate-900" : "text-slate-600"}`}
-                        >
-                          <i className="fa-solid fa-pen-to-square mr-1"></i> Nur Text-Editor
+                          <i className="fa-solid fa-trash"></i>
                         </button>
                       </div>
                     </div>
 
                     <div className={`grid grid-cols-1 ${docViewMode === "split" ? "xl:grid-cols-2" : ""} gap-6`}>
-                      {/* 1. DAS ÜBERSICHTSBLATT (STECKBRIEF) */}
+                      {/* 1. ÜBERSICHTSBLATT (STECKBRIEF) */}
                       {(docViewMode === "sheet" || docViewMode === "split") && (
-                        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-6">
-                          <div className="flex items-center justify-between border-b pb-3">
+                        <div className="bg-white rounded-2xl p-5 shadow-sm border border-orange-200/70 space-y-6">
+                          <div className="flex items-center justify-between border-b border-orange-100 pb-3">
                             <div>
                               <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
-                                <i className="fa-solid fa-id-card text-emerald-600"></i>
+                                <i className="fa-solid fa-id-card text-orange-600"></i>
                                 Übersichtsblatt (Dokumenten-Steckbrief)
                               </h3>
                               <p className="text-xs text-slate-500">Zuständigkeiten, Fortschritt & Abhängigkeits-Kette</p>
                             </div>
                             <div className="text-right">
-                              <span className="text-2xl font-extrabold text-emerald-600">{getProgress(activeDoc)}%</span>
+                              <span className="text-2xl font-extrabold text-orange-600">{getProgress(activeDoc)}%</span>
                               <span className="block text-[10px] uppercase tracking-wider text-slate-400">Gesamtfortschritt</span>
                             </div>
                           </div>
 
-                          {/* ABHÄNGIGKEITS-KETTE (PERSON A -> PERSON B) */}
+                          {/* ABHÄNGIGKEITS-KETTE */}
                           <div>
-                            <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500 mb-3 flex items-center justify-between">
-                              <span><i className="fa-solid fa-diagram-next mr-1.5 text-blue-600"></i>Abhängigkeiten & Reihenfolge (Person A ➔ Person B)</span>
+                            <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500 mb-3">
+                              <i className="fa-solid fa-diagram-next mr-1.5 text-orange-600"></i>
+                              Abhängigkeiten & Reihenfolge (Person A ➔ Person B)
                             </h4>
 
                             <div className="space-y-3">
@@ -527,7 +843,7 @@
                                       w.done
                                         ? "bg-emerald-50/50 border-emerald-200"
                                         : isActive
-                                        ? "bg-blue-50/60 border-blue-400 shadow-sm"
+                                        ? "bg-orange-50/80 border-orange-400 shadow-sm"
                                         : "bg-slate-50 border-slate-200 opacity-75"
                                     }`}
                                   >
@@ -539,7 +855,7 @@
                                             w.done
                                               ? "bg-emerald-600 text-white"
                                               : isActive
-                                              ? "bg-white border-2 border-blue-600 text-blue-600 hover:bg-blue-50"
+                                              ? "bg-white border-2 border-orange-600 text-orange-600 hover:bg-orange-50"
                                               : "bg-slate-200 text-slate-400 cursor-not-allowed"
                                           }`}
                                         >
@@ -556,7 +872,7 @@
                                               </span>
                                             )}
                                             {isActive && (
-                                              <span className="text-[11px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-medium animate-pulse">
+                                              <span className="text-[11px] bg-orange-600 text-white px-2 py-0.5 rounded-full font-medium animate-pulse">
                                                 Jetzt an der Reihe!
                                               </span>
                                             )}
@@ -577,13 +893,12 @@
                                         </div>
                                       </div>
 
-                                      {/* Direkt-Erinnerung per WhatsApp oder SMS */}
-                                      <div className="flex items-center gap-1">
+                                      <div className="flex items-center gap-1 shrink-0">
                                         <button
                                           onClick={() =>
                                             sendWhatsApp(
                                               member.phone,
-                                              `Hallo ${member.name}! Kurze Erinnerung zum Dokument "${activeDoc.title}": Dein Schritt "${w.title}" steht an (Abgabe: ${activeDoc.deadline}).`
+                                              `Hallo ${member.name}! Kurze NRM-Erinnerung zum Beitrag "${activeDoc.title}": Dein Schritt "${w.title}" steht an (Abgabe: ${activeDoc.deadline}).`
                                             )
                                           }
                                           title={`WhatsApp an ${member.name} senden`}
@@ -595,13 +910,27 @@
                                           onClick={() =>
                                             sendSMS(
                                               member.phone,
-                                              `Hallo ${member.name}! Erinnerung zum Dokument "${activeDoc.title}": Schritt "${w.title}" (Abgabe: ${activeDoc.deadline}).`
+                                              `Hallo ${member.name}! NRM-Erinnerung zum Beitrag "${activeDoc.title}": Schritt "${w.title}" (Abgabe: ${activeDoc.deadline}).`
                                             )
                                           }
                                           title={`SMS an ${member.name} senden`}
-                                          className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs"
+                                          className="p-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs"
                                         >
                                           <i className="fa-solid fa-comment-sms"></i>
+                                        </button>
+                                        <button
+                                          onClick={() => setEditingStep({ ...w })}
+                                          title="Arbeitsschritt bearbeiten"
+                                          className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs"
+                                        >
+                                          <i className="fa-solid fa-pen"></i>
+                                        </button>
+                                        <button
+                                          onClick={() => deleteWorkflowStep(w.id)}
+                                          title="Schritt löschen"
+                                          className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-xs"
+                                        >
+                                          <i className="fa-solid fa-trash"></i>
                                         </button>
                                       </div>
                                     </div>
@@ -610,14 +939,13 @@
                               })}
                             </div>
 
-                            {/* Neuen Abhängigkeitsschritt hinzufügen */}
                             <form onSubmit={addWorkflowStep} className="mt-3 flex flex-wrap sm:flex-nowrap gap-2">
                               <input
                                 type="text"
                                 placeholder="Nächster abhängiger Arbeitsschritt..."
                                 value={newStepForm.title}
                                 onChange={e => setNewStepForm({ ...newStepForm, title: e.target.value })}
-                                className="flex-1 text-xs px-3 py-2 rounded-xl border border-slate-200"
+                                className="flex-1 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
                               />
                               <select
                                 value={newStepForm.memberId}
@@ -629,30 +957,39 @@
                                   <option key={m.id} value={m.id}>{m.name}</option>
                                 ))}
                               </select>
-                              <button type="submit" className="px-3 py-2 bg-slate-900 text-white text-xs font-semibold rounded-xl hover:bg-slate-800">
+                              <button type="submit" className="px-3 py-2 bg-orange-600 text-white text-xs font-semibold rounded-xl hover:bg-orange-700">
                                 + Schritt
                               </button>
                             </form>
                           </div>
 
-                          {/* INVOLVIERTE PERSONEN & FESTE ZUSTÄNDIGKEITEN */}
-                          <div className="border-t pt-4">
+                          {/* ZUSTÄNDIGKEITEN */}
+                          <div className="border-t border-orange-100 pt-4">
                             <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500 mb-3">
-                              <i className="fa-solid fa-user-check mr-1.5 text-emerald-600"></i>
+                              <i className="fa-solid fa-user-check mr-1.5 text-orange-600"></i>
                               Involvierte Personen & Zuständigkeiten im Dokument
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                               {activeDoc.responsibilities.map((r, i) => {
                                 const m = getMember(r.memberId);
                                 return (
-                                  <div key={i} className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded-full ${m.color} text-white flex items-center justify-center font-bold text-xs shrink-0`}>
-                                      {m.name.slice(0, 2).toUpperCase()}
+                                  <div key={i} className="p-3 rounded-xl bg-orange-50/40 border border-orange-200/60 flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <div className={`w-8 h-8 rounded-full ${m.color} text-white flex items-center justify-center font-bold text-xs shrink-0`}>
+                                        {m.name.slice(0, 2).toUpperCase()}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-xs font-bold text-slate-800 truncate">{m.name}</p>
+                                        <p className="text-xs text-slate-600">{r.task}</p>
+                                      </div>
                                     </div>
-                                    <div className="min-w-0 flex-1">
-                                      <p className="text-xs font-bold text-slate-800 truncate">{m.name}</p>
-                                      <p className="text-xs text-slate-600">{r.task}</p>
-                                    </div>
+                                    <button
+                                      onClick={() => deleteResponsibility(i)}
+                                      title="Zuständigkeit entfernen"
+                                      className="text-slate-400 hover:text-red-600 text-xs p-1"
+                                    >
+                                      <i className="fa-solid fa-xmark"></i>
+                                    </button>
                                   </div>
                                 );
                               })}
@@ -664,7 +1001,7 @@
                                 placeholder="Zuständigkeit (z.B. Kapitel 4, Korrektur)..."
                                 value={newRespForm.task}
                                 onChange={e => setNewRespForm({ ...newRespForm, task: e.target.value })}
-                                className="flex-1 text-xs px-3 py-2 rounded-xl border border-slate-200"
+                                className="flex-1 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
                               />
                               <select
                                 value={newRespForm.memberId}
@@ -676,7 +1013,7 @@
                                   <option key={m.id} value={m.id}>{m.name}</option>
                                 ))}
                               </select>
-                              <button type="submit" className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-semibold rounded-xl">
+                              <button type="submit" className="px-3 py-2 bg-orange-100 hover:bg-orange-200 text-orange-900 text-xs font-semibold rounded-xl">
                                 + Zuweisen
                               </button>
                             </form>
@@ -684,124 +1021,277 @@
                         </div>
                       )}
 
-                      {/* 2. GEMEINSAMER DOKUMENTEN-EDITOR & ÜBERGABE-NOTIZEN */}
+                      {/* 2. DATEI-AUSTAUSCH (UPLOAD / DOWNLOAD) & DOKUMENTEN-EDITOR */}
                       {(docViewMode === "editor" || docViewMode === "split") && (
-                        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col justify-between space-y-4">
-                          <div>
-                            <div className="flex items-center justify-between border-b pb-3 mb-3">
+                        <div className="space-y-6">
+                          {/* DATEI-ABLAGE ZUM HOCHLADEN & WEITERBEARBEITEN */}
+                          <div className="bg-white rounded-2xl p-5 shadow-sm border border-orange-200/70 space-y-4">
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-orange-100 pb-3">
                               <div>
                                 <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
-                                  <i className="fa-solid fa-file-pen text-blue-600"></i>
-                                  Gemeinsamer Dokumenten-Editor
+                                  <i className="fa-solid fa-cloud-arrow-up text-orange-600"></i>
+                                  Dateien & Anhänge zum Weiterbearbeiten
                                 </h3>
-                                <p className="text-xs text-slate-500">Alle Änderungen werden sofort automatisch gespeichert</p>
+                                <p className="text-xs text-slate-500">
+                                  Word, Excel, PDF, Bilder etc. hochladen, herunterladen & aktualisierte Versionen teilen
+                                </p>
                               </div>
                               <button
-                                onClick={() => {
-                                  navigator.clipboard.writeText(activeDoc.content);
-                                  alert("Dokumententext in die Zwischenablage kopiert!");
-                                }}
-                                className="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium"
+                                onClick={() => setShowLinkForm(!showLinkForm)}
+                                className="text-xs px-2.5 py-1.5 bg-orange-50 hover:bg-orange-100 rounded-lg font-medium text-orange-800 border border-orange-200/60"
                               >
-                                <i className="fa-regular fa-copy mr-1"></i> Text kopieren
+                                <i className="fa-solid fa-link mr-1"></i> Cloud-Link ergänzen
                               </button>
                             </div>
 
-                            <textarea
-                              value={activeDoc.content}
-                              onChange={e => updateDocContent(e.target.value)}
-                              rows={14}
-                              className="w-full p-4 rounded-xl bg-slate-50 border border-slate-200 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                              placeholder="Hier gemeinsam am Dokument schreiben..."
-                            />
+                            {/* UPLOAD-BOX */}
+                            <div className="p-3.5 rounded-xl bg-orange-50/70 border border-orange-200 space-y-2.5">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <select
+                                  value={uploadMemberId}
+                                  onChange={e => setUploadMemberId(e.target.value)}
+                                  className="text-xs px-3 py-2 rounded-lg border border-orange-200 bg-white"
+                                >
+                                  <option value="">Hochgeladen von (Optional)...</option>
+                                  {data.members.map(m => (
+                                    <option key={m.id} value={m.id}>{m.name}</option>
+                                  ))}
+                                </select>
+                                <input
+                                  type="text"
+                                  placeholder="Versions-Notiz (z.B. 'Kapitel 2 ergänzt')"
+                                  value={uploadComment}
+                                  onChange={e => setUploadComment(e.target.value)}
+                                  className="text-xs px-3 py-2 rounded-lg border border-orange-200 bg-white"
+                                />
+                              </div>
+
+                              <label className="w-full py-2.5 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition shadow-sm">
+                                <i className="fa-solid fa-file-arrow-up text-sm"></i>
+                                Datei auswählen & zum Beitrag hochladen (Word, PDF, Excel, ZIP, Bild...)
+                                <input type="file" onChange={handleFileUpload} className="hidden" />
+                              </label>
+                            </div>
+
+                            {/* EXTERNER CLOUD-LINK */}
+                            {showLinkForm && (
+                              <form onSubmit={handleAddExternalLink} className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                                <p className="text-xs font-bold text-slate-700">Externen Link (z.B. Google Drive, OneDrive, Dropbox) hinterlegen:</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder="Bezeichnung (z.B. Rohdaten / Video)"
+                                    value={externalLinkForm.name}
+                                    onChange={e => setExternalLinkForm({ ...externalLinkForm, name: e.target.value })}
+                                    className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200"
+                                  />
+                                  <input
+                                    type="url"
+                                    required
+                                    placeholder="https://..."
+                                    value={externalLinkForm.url}
+                                    onChange={e => setExternalLinkForm({ ...externalLinkForm, url: e.target.value })}
+                                    className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200"
+                                  />
+                                  <button type="submit" className="bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-lg px-3 py-1.5">
+                                    Link speichern
+                                  </button>
+                                </div>
+                              </form>
+                            )}
+
+                            {/* LISTE DER HOCHGELADENEN DATEIEN */}
+                            <div className="space-y-2 max-h-60 overflow-y-auto custom-scroll">
+                              {(!activeDoc.files || activeDoc.files.length === 0) ? (
+                                <p className="text-xs text-slate-400 text-center py-3">
+                                  Noch keine Dateien zu diesem Beitrag hochgeladen.
+                                </p>
+                              ) : (
+                                activeDoc.files.map(file => (
+                                  <div key={file.id} className="p-3 rounded-xl bg-orange-50/30 border border-orange-200/70 flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <div className="w-9 h-9 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                                        <i className={`fa-solid ${file.isExternal ? "fa-up-right-from-square" : "fa-file-arrow-down"}`}></i>
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-xs font-bold text-slate-900 truncate">{file.name}</p>
+                                        <p className="text-[11px] text-slate-500">
+                                          Von <strong>{file.uploadedBy}</strong> · {file.uploadedAt}
+                                          {file.size ? ` · ${formatFileSize(file.size)}` : ""}
+                                        </p>
+                                        {file.comment && (
+                                          <p className="text-[11px] text-orange-700 font-medium mt-0.5">
+                                            💬 „{file.comment}“
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      {file.isExternal ? (
+                                        <a
+                                          href={file.dataUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1"
+                                        >
+                                          <i className="fa-solid fa-arrow-up-right-from-square"></i> Öffnen
+                                        </a>
+                                      ) : (
+                                        <a
+                                          href={file.dataUrl}
+                                          download={file.name}
+                                          className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1"
+                                        >
+                                          <i className="fa-solid fa-download"></i> Herunterladen
+                                        </a>
+                                      )}
+                                      <button
+                                        onClick={() => deleteFile(file.id)}
+                                        title="Datei löschen"
+                                        className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs"
+                                      >
+                                        <i className="fa-solid fa-trash"></i>
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
                           </div>
 
-                          {/* KOMMENTARE & ÜBERGABE-NOTIZEN */}
-                          <div className="border-t pt-4">
-                            <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500 mb-2">
-                              Übergabe-Notizen & Kommentare zum Dokument
-                            </h4>
-                            <div className="space-y-2 max-h-40 overflow-y-auto mb-3">
-                              {activeDoc.notes.map(n => (
-                                <div key={n.id} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                                  <div className="flex justify-between font-bold text-slate-700 mb-0.5">
-                                    <span>{n.author}</span>
-                                    <span className="text-slate-400 font-normal">{n.time}</span>
-                                  </div>
-                                  <p className="text-slate-600">{n.text}</p>
+                          {/* DIREKTER TEXT-EDITOR & NOTIZEN */}
+                          <div className="bg-white rounded-2xl p-5 shadow-sm border border-orange-200/70 flex flex-col justify-between space-y-4">
+                            <div>
+                              <div className="flex items-center justify-between border-b border-orange-100 pb-3 mb-3">
+                                <div>
+                                  <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+                                    <i className="fa-solid fa-file-pen text-orange-600"></i>
+                                    Direkter Text-Entwurf & Redaktionsnotizen
+                                  </h3>
+                                  <p className="text-xs text-slate-500">Für Artikelentwürfe, Gliederungen & gemeinsame Absprachen</p>
                                 </div>
-                              ))}
-                            </div>
-                            <form onSubmit={addNote} className="flex gap-2">
-                              <input
-                                type="text"
-                                placeholder="Kurze Info für die nächste Person hinterlassen..."
-                                value={newNoteText}
-                                onChange={e => setNewNoteText(e.target.value)}
-                                className="flex-1 text-xs px-3 py-2 rounded-xl border border-slate-200"
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(activeDoc.content);
+                                    alert("Text in die Zwischenablage kopiert!");
+                                  }}
+                                  className="text-xs px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-800 rounded-lg font-medium border border-orange-200/60"
+                                >
+                                  <i className="fa-regular fa-copy mr-1"></i> Kopieren
+                                </button>
+                              </div>
+
+                              <textarea
+                                value={activeDoc.content}
+                                onChange={e => updateDocContent(e.target.value)}
+                                rows={10}
+                                className="w-full p-4 rounded-xl bg-orange-50/30 border border-orange-200/80 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                placeholder="Hier gemeinsam am Artikel oder Dokument schreiben..."
                               />
-                              <button type="submit" className="px-3 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-xl hover:bg-emerald-700">
-                                Senden
-                              </button>
-                            </form>
+                            </div>
+
+                            <div className="border-t border-orange-100 pt-4">
+                              <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500 mb-2">
+                                Übergabe-Kommentare zum Dokument
+                              </h4>
+                              <div className="space-y-2 max-h-36 overflow-y-auto mb-3">
+                                {activeDoc.notes.map(n => (
+                                  <div key={n.id} className="p-2.5 rounded-xl bg-orange-50/40 border border-orange-200/60 text-xs">
+                                    <div className="flex justify-between font-bold text-slate-700 mb-0.5">
+                                      <span>{n.author}</span>
+                                      <span className="text-slate-400 font-normal">{n.time}</span>
+                                    </div>
+                                    <p className="text-slate-600">{n.text}</p>
+                                  </div>
+                                ))}
+                              </div>
+                              <form onSubmit={addNote} className="flex gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="Kurze Info für die nächste Person hinterlassen..."
+                                  value={newNoteText}
+                                  onChange={e => setNewNoteText(e.target.value)}
+                                  className="flex-1 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                />
+                                <button type="submit" className="px-3 py-2 bg-orange-600 text-white text-xs font-semibold rounded-xl hover:bg-orange-700">
+                                  Senden
+                                </button>
+                              </form>
+                            </div>
                           </div>
                         </div>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <div className="lg:col-span-9 bg-white rounded-2xl p-8 text-center">Bitte links ein Dokument auswählen.</div>
+                  <div className="lg:col-span-9 bg-white rounded-2xl p-8 text-center">Bitte links ein Dokument auswählen oder neu anlegen.</div>
                 )}
               </div>
             )}
 
-            {/* TAB 2: TREFFEN, ABGABETERMINE & WHATSAPP/SMS ERINNERUNGEN */}
+            {/* TAB 2: TREFFEN & ABGABETERMINE */}
             {activeTab === "calendar" && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-                  <h2 className="text-xl font-bold mb-1">Übersicht: Treffen & Abgabetermine</h2>
-                  <p className="text-xs text-slate-500 mb-4">Mit einem Klick Erinnerungen per WhatsApp oder SMS an die Gruppe schicken</p>
+                <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-orange-200/70">
+                  <h2 className="text-xl font-bold mb-1">Übersicht: Redaktionssitzungen & Abgabetermine</h2>
+                  <p className="text-xs text-slate-500 mb-4">Mit einem Klick Erinnerungen per WhatsApp oder SMS senden oder Termine bearbeiten</p>
 
                   <div className="space-y-3">
                     {data.meetings.map(m => (
-                      <div key={m.id} className="p-4 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-4 bg-slate-50">
+                      <div key={m.id} className="p-4 rounded-xl border border-orange-200/70 flex flex-wrap items-center justify-between gap-4 bg-orange-50/30">
                         <div className="flex items-center gap-3">
-                          <div className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center font-bold text-white ${m.type === "Abgabe" ? "bg-red-500" : "bg-blue-600"}`}>
+                          <div className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center font-bold text-white shadow-sm ${m.type === "Abgabe" ? "bg-red-600" : "bg-orange-600"}`}>
                             <i className={`fa-solid ${m.type === "Abgabe" ? "fa-flag-checkered" : "fa-handshake"}`}></i>
                           </div>
                           <div>
-                            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${m.type === "Abgabe" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"}`}>
+                            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${m.type === "Abgabe" ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-800"}`}>
                               {m.type}
                             </span>
                             <h3 className="font-bold text-slate-900">{m.title}</h3>
                             <p className="text-xs text-slate-600">
-                              <i className="fa-regular fa-calendar mr-1"></i> {m.date} um {m.time} Uhr · <i className="fa-solid fa-location-dot ml-1 mr-1"></i> {m.location}
+                              <i className="fa-regular fa-calendar mr-1 text-orange-600"></i> {m.date} um {m.time} Uhr · <i className="fa-solid fa-location-dot ml-1 mr-1 text-orange-600"></i> {m.location}
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           <button
                             onClick={() =>
                               sendWhatsApp(
                                 "",
-                                `📅 *Erinnerung (${m.type})*: "${m.title}"\n🕒 Wann: ${m.date} um ${m.time} Uhr\n📍 Wo: ${m.location}\nBitte pünktlich sein / rechtzeitig eintragen!`
+                                `📅 *NRM-Erinnerung (${m.type})*: "${m.title}"\n🕒 Wann: ${m.date} um ${m.time} Uhr\n📍 Wo: ${m.location}\nBitte pünktlich sein / rechtzeitig eintragen!`
                               )
                             }
-                            className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5"
+                            className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1"
                           >
-                            <i className="fa-brands fa-whatsapp text-sm"></i> WhatsApp-Erinnerung
+                            <i className="fa-brands fa-whatsapp text-sm"></i> WhatsApp
                           </button>
                           <button
                             onClick={() =>
                               sendSMS(
                                 data.members.map(mem => mem.phone).join(","),
-                                `Erinnerung (${m.type}): "${m.title}" am ${m.date} um ${m.time} Uhr (${m.location}).`
+                                `NRM-Erinnerung (${m.type}): "${m.title}" am ${m.date} um ${m.time} Uhr (${m.location}).`
                               )
                             }
-                            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5"
+                            className="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1"
                           >
-                            <i className="fa-solid fa-comment-sms text-sm"></i> SMS an Team
+                            <i className="fa-solid fa-comment-sms text-sm"></i> SMS
+                          </button>
+                          <button
+                            onClick={() => setEditingMeeting({ ...m })}
+                            title="Termin bearbeiten"
+                            className="p-2 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-xl text-xs"
+                          >
+                            <i className="fa-solid fa-pen"></i>
+                          </button>
+                          <button
+                            onClick={() => deleteMeeting(m.id)}
+                            title="Termin löschen"
+                            className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl text-xs"
+                          >
+                            <i className="fa-solid fa-trash"></i>
                           </button>
                         </div>
                       </div>
@@ -809,8 +1299,7 @@
                   </div>
                 </div>
 
-                {/* Neues Treffen / Abgabe eintragen */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 h-fit">
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-orange-200/70 h-fit">
                   <h3 className="font-bold text-lg mb-3">Neuen Termin eintragen</h3>
                   <form
                     onSubmit={e => {
@@ -831,15 +1320,15 @@
                         onChange={e => setNewMeetingForm({ ...newMeetingForm, type: e.target.value })}
                         className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white"
                       >
-                        <option value="Treffen">Gruppentreffen / Besprechung</option>
-                        <option value="Abgabe">Abgabetermin / Deadline</option>
+                        <option value="Treffen">Redaktionssitzung / Treffen</option>
+                        <option value="Abgabe">Redaktionsschluss / Abgabe</option>
                       </select>
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-slate-600">Titel</label>
                       <input
                         type="text"
-                        placeholder="z.B. Endbesprechung Präsentation"
+                        placeholder="z.B. Redaktionskonferenz"
                         value={newMeetingForm.title}
                         onChange={e => setNewMeetingForm({ ...newMeetingForm, title: e.target.value })}
                         className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
@@ -869,13 +1358,13 @@
                       <label className="text-xs font-semibold text-slate-600">Ort / Link</label>
                       <input
                         type="text"
-                        placeholder="z.B. Zoom-Link oder Café"
+                        placeholder="z.B. Zoom-Link oder Büro"
                         value={newMeetingForm.location}
                         onChange={e => setNewMeetingForm({ ...newMeetingForm, location: e.target.value })}
                         className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
                       />
                     </div>
-                    <button type="submit" className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm">
+                    <button type="submit" className="w-full py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-xl text-sm shadow-sm transition">
                       Termin speichern
                     </button>
                   </form>
@@ -883,51 +1372,90 @@
               </div>
             )}
 
-            {/* TAB 3: TEAMMITGLIEDER & TELEFONNUMMERN FÜR SMS/WHATSAPP */}
+            {/* TAB 3: TEAMMITGLIEDER & KONTAKTE */}
             {activeTab === "team" && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-                  <h2 className="text-xl font-bold mb-1">Gruppenmitglieder & Kontakte</h2>
-                  <p className="text-xs text-slate-500 mb-4">Hinterlegte Nummern für direkte WhatsApp- und SMS-Benachrichtigungen bei Abhängigkeiten</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {data.members.map(m => (
-                      <div key={m.id} className="p-4 rounded-xl border border-slate-200 flex items-center justify-between bg-slate-50">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full ${m.color} text-white flex items-center justify-center font-bold`}>
-                            {m.name.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-slate-900 text-sm">{m.name}</h3>
-                            <p className="text-xs text-slate-500">{m.role}</p>
-                            <p className="text-xs font-mono text-slate-600 mt-0.5">{m.phone}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => sendWhatsApp(m.phone, `Hallo ${m.name}! 👋`)}
-                            className="p-2 bg-emerald-500 text-white rounded-lg text-xs"
-                          >
-                            <i className="fa-brands fa-whatsapp"></i>
-                          </button>
-                          <button
-                            onClick={() => sendSMS(m.phone, `Hallo ${m.name}!`)}
-                            className="p-2 bg-blue-600 text-white rounded-lg text-xs"
-                          >
-                            <i className="fa-solid fa-comment-sms"></i>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-orange-200/70">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <div>
+                      <h2 className="text-xl font-bold">Redaktionsteam & Kontakte</h2>
+                      <p className="text-xs text-slate-500">Klicke auf das Stift-Symbol, um Namen, Rollen oder Telefonnummern zu ändern</p>
+                    </div>
+                    {data.members.length > 0 && (
+                      <button
+                        onClick={() => {
+                          if (confirm("Möchtest du wirklich ALLE Kontakte auf einmal löschen?")) {
+                            setData(prev => ({ ...prev, members: [] }));
+                          }
+                        }}
+                        className="text-xs px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium"
+                      >
+                        <i className="fa-solid fa-trash-can mr-1"></i> Alle Kontakte leeren
+                      </button>
+                    )}
                   </div>
+
+                  {data.members.length === 0 ? (
+                    <div className="p-8 text-center text-slate-500 text-sm border border-dashed rounded-xl">
+                      Noch keine Teammitglieder eingetragen. Füge rechts deine Kolleginnen und Kollegen hinzu!
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {data.members.map(m => (
+                        <div key={m.id} className="p-4 rounded-xl border border-orange-200/70 flex items-center justify-between bg-orange-50/30">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`w-10 h-10 rounded-full ${m.color} text-white flex items-center justify-center font-bold shrink-0 shadow-sm`}>
+                              {m.name.slice(0, 2).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="font-bold text-slate-900 text-sm truncate">{m.name}</h3>
+                              <p className="text-xs text-slate-500 truncate">{m.role}</p>
+                              <p className="text-xs font-mono text-slate-600 mt-0.5">{m.phone}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <button
+                              onClick={() => sendWhatsApp(m.phone, `Hallo ${m.name}! 👋`)}
+                              title="WhatsApp senden"
+                              className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs"
+                            >
+                              <i className="fa-brands fa-whatsapp"></i>
+                            </button>
+                            <button
+                              onClick={() => sendSMS(m.phone, `Hallo ${m.name}!`)}
+                              title="SMS senden"
+                              className="p-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs"
+                            >
+                              <i className="fa-solid fa-comment-sms"></i>
+                            </button>
+                            <button
+                              onClick={() => setEditingMember({ ...m })}
+                              title={`${m.name} bearbeiten`}
+                              className="p-2 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-lg text-xs"
+                            >
+                              <i className="fa-solid fa-pen"></i>
+                            </button>
+                            <button
+                              onClick={() => deleteMember(m.id, m.name)}
+                              title={`${m.name} löschen`}
+                              className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg text-xs"
+                            >
+                              <i className="fa-solid fa-trash"></i>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 h-fit">
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-orange-200/70 h-fit">
                   <h3 className="font-bold text-lg mb-3">Person hinzufügen</h3>
                   <form
                     onSubmit={e => {
                       e.preventDefault();
                       if (!newMemberForm.name) return;
-                      const colors = ["bg-emerald-600", "bg-blue-600", "bg-purple-600", "bg-amber-600", "bg-rose-600", "bg-indigo-600"];
+                      const colors = ["bg-orange-600", "bg-amber-600", "bg-red-600", "bg-blue-600", "bg-emerald-600", "bg-purple-600"];
                       setData(prev => ({
                         ...prev,
                         members: [
@@ -935,7 +1463,7 @@
                           {
                             id: "m_" + Date.now(),
                             name: newMemberForm.name,
-                            role: newMemberForm.role || "Mitglied",
+                            role: newMemberForm.role || "Redaktion",
                             phone: newMemberForm.phone || "+43664...",
                             color: colors[prev.members.length % colors.length]
                           }
@@ -954,7 +1482,7 @@
                     />
                     <input
                       type="text"
-                      placeholder="Hauptaufgabe / Rolle"
+                      placeholder="Hauptaufgabe / Ressort"
                       value={newMemberForm.role}
                       onChange={e => setNewMemberForm({ ...newMemberForm, role: e.target.value })}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
@@ -966,7 +1494,7 @@
                       onChange={e => setNewMemberForm({ ...newMemberForm, phone: e.target.value })}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
                     />
-                    <button type="submit" className="w-full py-2.5 bg-slate-900 text-white font-semibold rounded-xl text-sm">
+                    <button type="submit" className="w-full py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-xl text-sm shadow-sm transition">
                       Mitglied speichern
                     </button>
                   </form>
@@ -975,18 +1503,208 @@
             )}
           </main>
 
-          {/* MODAL: AUTOMATISCHE BENACHRICHTIGUNG BEI ABHÄNGIGKEIT (PERSON A -> PERSON B) */}
+          {/* MODAL: GRUPPENMITGLIED BEARBEITEN */}
+          {editingMember && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+              <form onSubmit={saveEditedMember} className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+                <h3 className="font-bold text-lg">Kontakt bearbeiten</h3>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingMember.name}
+                    onChange={e => setEditingMember({ ...editingMember, name: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Rolle / Zuständigkeit</label>
+                  <input
+                    type="text"
+                    value={editingMember.role}
+                    onChange={e => setEditingMember({ ...editingMember, role: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Telefonnummer (für WhatsApp & SMS)</label>
+                  <input
+                    type="text"
+                    value={editingMember.phone}
+                    onChange={e => setEditingMember({ ...editingMember, phone: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div className="flex gap-2 justify-end pt-2">
+                  <button type="button" onClick={() => setEditingMember(null)} className="px-4 py-2 text-xs text-slate-600">Abbrechen</button>
+                  <button type="submit" className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-xl">Änderungen speichern</button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* MODAL: DOKUMENT-STECKBRIEF BEARBEITEN */}
+          {editingDocMeta && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+              <form onSubmit={saveEditedDocMeta} className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+                <h3 className="font-bold text-lg">Dokument-Steckbrief bearbeiten</h3>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Titel</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingDocMeta.title}
+                    onChange={e => setEditingDocMeta({ ...editingDocMeta, title: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600">Kategorie</label>
+                    <select
+                      value={editingDocMeta.category}
+                      onChange={e => setEditingDocMeta({ ...editingDocMeta, category: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white"
+                    >
+                      {data.categories.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600">Abgabetermin</label>
+                    <input
+                      type="date"
+                      value={editingDocMeta.deadline}
+                      onChange={e => setEditingDocMeta({ ...editingDocMeta, deadline: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Kurzbeschreibung</label>
+                  <input
+                    type="text"
+                    value={editingDocMeta.description}
+                    onChange={e => setEditingDocMeta({ ...editingDocMeta, description: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div className="flex gap-2 justify-end pt-2">
+                  <button type="button" onClick={() => setEditingDocMeta(null)} className="px-4 py-2 text-xs text-slate-600">Abbrechen</button>
+                  <button type="submit" className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-xl">Speichern</button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* MODAL: ABHÄNGIGKEITS-SCHRITT BEARBEITEN */}
+          {editingStep && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+              <form onSubmit={saveEditedStep} className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+                <h3 className="font-bold text-lg">Arbeitsschritt bearbeiten</h3>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Beschreibung des Schritts</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingStep.title}
+                    onChange={e => setEditingStep({ ...editingStep, title: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Zuständige Person</label>
+                  <select
+                    value={editingStep.memberId}
+                    onChange={e => setEditingStep({ ...editingStep, memberId: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white"
+                  >
+                    {data.members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </select>
+                </div>
+                <div className="flex gap-2 justify-end pt-2">
+                  <button type="button" onClick={() => setEditingStep(null)} className="px-4 py-2 text-xs text-slate-600">Abbrechen</button>
+                  <button type="submit" className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-xl">Speichern</button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* MODAL: TERMIN BEARBEITEN */}
+          {editingMeeting && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+              <form onSubmit={saveEditedMeeting} className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+                <h3 className="font-bold text-lg">Termin bearbeiten</h3>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Art</label>
+                  <select
+                    value={editingMeeting.type}
+                    onChange={e => setEditingMeeting({ ...editingMeeting, type: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white"
+                  >
+                    <option value="Treffen">Redaktionssitzung / Treffen</option>
+                    <option value="Abgabe">Redaktionsschluss / Abgabe</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Titel</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingMeeting.title}
+                    onChange={e => setEditingMeeting({ ...editingMeeting, title: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600">Datum</label>
+                    <input
+                      type="date"
+                      value={editingMeeting.date}
+                      onChange={e => setEditingMeeting({ ...editingMeeting, date: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600">Uhrzeit</label>
+                    <input
+                      type="time"
+                      value={editingMeeting.time}
+                      onChange={e => setEditingMeeting({ ...editingMeeting, time: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Ort / Link</label>
+                  <input
+                    type="text"
+                    value={editingMeeting.location}
+                    onChange={e => setEditingMeeting({ ...editingMeeting, location: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div className="flex gap-2 justify-end pt-2">
+                  <button type="button" onClick={() => setEditingMeeting(null)} className="px-4 py-2 text-xs text-slate-600">Abbrechen</button>
+                  <button type="submit" className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-xl">Speichern</button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* MODAL: BENACHRICHTIGUNG BEI ABHÄNGIGKEIT */}
           {notificationModal && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
               <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
-                <div className="flex items-center gap-3 text-emerald-600">
+                <div className="flex items-center gap-3 text-orange-600">
                   <i className="fa-solid fa-bell text-2xl"></i>
                   <h3 className="font-bold text-lg text-slate-900">{notificationModal.title}</h3>
                 </div>
                 <p className="text-xs text-slate-600">
                   Da du deinen Schritt erledigt hast, ist jetzt <strong>{notificationModal.recipient.name}</strong> an der Reihe. Möchtest du direkt eine Benachrichtigung senden?
                 </p>
-                <div className="p-3 bg-slate-100 rounded-xl text-xs font-mono text-slate-700 whitespace-pre-wrap">
+                <div className="p-3 bg-orange-50/70 border border-orange-200 rounded-xl text-xs font-mono text-slate-700 whitespace-pre-wrap">
                   {notificationModal.message}
                 </div>
                 <div className="flex flex-wrap gap-2 pt-2">
@@ -1004,7 +1722,7 @@
                       sendSMS(notificationModal.recipient.phone, notificationModal.message);
                       setNotificationModal(null);
                     }}
-                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5"
+                    className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5"
                   >
                     <i className="fa-solid fa-comment-sms text-base"></i> Per SMS senden
                   </button>
@@ -1019,7 +1737,7 @@
             </div>
           )}
 
-          {/* MODAL: NEUES DOKUMENT ANLEGEN */}
+          {/* MODAL: NEUES DOKUMENT */}
           {newDocModal && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
               <form onSubmit={createNewDocument} className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
@@ -1029,7 +1747,7 @@
                   <input
                     type="text"
                     required
-                    placeholder="z.B. Präsentationsfolien & Handout"
+                    placeholder="z.B. Redaktionsbeitrag & Interview"
                     value={newDocForm.title}
                     onChange={e => setNewDocForm({ ...newDocForm, title: e.target.value })}
                     className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
@@ -1060,7 +1778,7 @@
                   <label className="text-xs font-semibold text-slate-600">Kurzbeschreibung</label>
                   <input
                     type="text"
-                    placeholder="Worum geht es in diesem Dokument?"
+                    placeholder="Worum geht es in diesem Beitrag?"
                     value={newDocForm.description}
                     onChange={e => setNewDocForm({ ...newDocForm, description: e.target.value })}
                     className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
@@ -1068,7 +1786,7 @@
                 </div>
                 <div className="flex gap-2 justify-end pt-2">
                   <button type="button" onClick={() => setNewDocModal(false)} className="px-4 py-2 text-xs text-slate-600">Abbrechen</button>
-                  <button type="submit" className="px-4 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-xl">Anlegen</button>
+                  <button type="submit" className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-xl">Anlegen</button>
                 </div>
               </form>
             </div>
