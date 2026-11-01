@@ -193,6 +193,16 @@
         return Math.round((doneCount / doc.workflow.length) * 100);
       };
 
+      const sendWhatsApp = (phone, message) => {
+        const cleanPhone = (phone || "").replace(/[^0-9+]/g, "").replace(/^\+/, "");
+        window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank");
+      };
+
+      const sendSMS = (phone, message) => {
+        const cleanPhone = (phone || "").replace(/[^0-9+,]/g, "");
+        window.location.href = `sms:${cleanPhone}?body=${encodeURIComponent(message)}`;
+      };
+
       const handleFileUpload = (e) => {
         const file = e.target.files[0];
         if (!file || !activeDoc.id) return;
