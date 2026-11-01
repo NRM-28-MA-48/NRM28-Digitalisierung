@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Nachrichten- und Redaktionsmedium (NRM)</title>
+  <title>NRM28 · MA48 · V3 Dashboard & Kalender</title>
   <!-- Dynamisches Favicon & Smartphone App-Icon -->
   <link id="app-favicon" rel="icon" type="image/png" href="48er.png" />
   <link id="app-touch-icon" rel="apple-touch-icon" href="48er.png" />
@@ -42,10 +42,10 @@
     const INITIAL_DATA = {
       categories: ["Allgemein", "Redaktion & Beiträge", "Recherche & Daten", "Layout & Medien", "Organisation"],
       members: [
-        { id: "m1", name: "Anna M.", role: "Chefredaktion & Koordination", phone: "+436641234567", color: "bg-orange-600" },
-        { id: "m2", name: "Lukas K.", role: "Recherche & Faktenprüfung", phone: "+436609876543", color: "bg-amber-600" },
-        { id: "m3", name: "Sarah W.", role: "Text & Lektorat", phone: "+436761122334", color: "bg-red-600" },
-        { id: "m4", name: "Max B.", role: "Grafik & Gestaltung", phone: "+436995566778", color: "bg-blue-600" }
+        { id: "m1", name: "Ludwig T.", role: "Chefredaktion & Koordination", phone: "+436641234567", color: "bg-orange-600" },
+        { id: "m2", name: "Helena S.", role: "Recherche & Faktenprüfung", phone: "+436609876543", color: "bg-amber-600" },
+        { id: "m3", name: "Marie D.", role: "Text & Lektorat", phone: "+436761122334", color: "bg-red-600" },
+        { id: "m4", name: "Judith R.", role: "Grafik & Gestaltung", phone: "+436995566778", color: "bg-blue-600" }
       ],
       meetings: [
         { id: "mt1", title: "Redaktionssitzung & Themenplanung", date: "2026-11-05", time: "17:00", location: "Online / Besprechungsraum", type: "Treffen" },
@@ -72,9 +72,9 @@
             { id: "w4", step: 4, title: "Finales Satz-Layout & PDF-Freigabe (wartet auf Schritt 3)", memberId: "m4", done: false, completedAt: null }
           ],
           files: [],
-          content: "# Hauptbeitrag: Projektanalyse\n\n## 1. Einleitung (Anna M.)\nDie Grundstruktur steht bereits. Hier wird der Aufhänger unseres Beitrags beschrieben...\n\n## 2. Hintergrund & Zahlen (Lukas K.)\n[Hier bitte die recherchierten Daten eintragen oder als Datei anhängen]\n\n## 3. Fazit & Ausblick (Sarah W.)\n[Folgt nach der Datenauswertung]",
+          content: "# Hauptbeitrag: Projektanalyse\n\n## 1. Einleitung (Ludwig T.)\nDie Grundstruktur steht bereits. Hier wird der Aufhänger unseres Beitrags beschrieben...\n\n## 2. Hintergrund & Zahlen (Helena S.)\n[Hier bitte die recherchierten Daten eintragen oder als Datei anhängen]\n\n## 3. Fazit & Ausblick (Marie D.)\n[Folgt nach der Datenauswertung]",
           notes: [
-            { id: "n1", author: "Anna M.", text: "Ich habe den ersten Teil fertiggestellt. Lukas, du kannst jetzt mit den Zahlen starten!", time: "Gestern, 14:20" }
+            { id: "n1", author: "Ludwig T.", text: "Ich habe den ersten Teil fertiggestellt. Helena, du kannst jetzt mit den Zahlen starten!", time: "Gestern, 14:20" }
           ]
         },
         {
@@ -144,7 +144,8 @@
       }, []);
 
       const [data, setData] = useState(() => {
-        const saved = localStorage.getItem("nrm_data_v1") || localStorage.getItem("groupsync_data_v2");
+        // Einmalige Übernahme der MA48-Daten möglich; danach eigene, getrennte V3-Daten.
+        const saved = localStorage.getItem("nrm_data_v3") || localStorage.getItem("nrm_data_v1") || localStorage.getItem("groupsync_data_v2");
         if (saved) {
           try {
             const parsed = JSON.parse(saved);
@@ -157,7 +158,10 @@
         return INITIAL_DATA;
       });
 
-      const [activeTab, setActiveTab] = useState("documents");
+      const [activeTab, setActiveTab] = useState("dashboard");
+      const [selectedMemberId, setSelectedMemberId] = useState(() => localStorage.getItem("nrm_selected_member_v3") || "");
+      const [onlyMyDocuments, setOnlyMyDocuments] = useState(false);
+      useEffect(() => { localStorage.setItem("nrm_selected_member_v3", selectedMemberId); }, [selectedMemberId]);
       const [selectedCategory, setSelectedCategory] = useState("Alle");
       const [selectedDocId, setSelectedDocId] = useState(data.documents[0]?.id || null);
       const [docViewMode, setDocViewMode] = useState("split");
@@ -187,7 +191,7 @@
 
       useEffect(() => {
         try {
-          localStorage.setItem("nrm_data_v1", JSON.stringify(data));
+          localStorage.setItem("nrm_data_v3", JSON.stringify(data));
         } catch (err) {
           alert("Hinweis: Der lokale Browser-Speicher ist fast voll (durch große Datei-Anhänge). Bitte nutze oben rechts 'Stand speichern', um alle Daten als Datei zu sichern.");
         }
@@ -229,6 +233,62 @@
         window.location.href = url;
       };
 
+      // --- KALENDEREXPORT ALS .ICS (kein Server und keine SMS-Kosten nötig) ---
+      const calendarEscape = (value) => String(value || "")
+        .replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n")
+        .replace(/,/g, "\\,").replace(/;/g, "\\;");
+
+      const calendarDate = (value) => String(value || "").replace(/-/g, "");
+
+      const buildCalendarEvents = () => [
+        ...data.meetings.map(m => ({
+          id: "meeting_" + m.id, date: m.date, time: m.time,
+          title: `${m.type === "Abgabe" ? "ABGABE" : "TREFFEN"}: ${m.title}`,
+          description: `NRM28 / MA48 – ${m.type}. Erinnerung aus dem Gruppenplaner.`,
+          location: m.location, isDeadline: m.type === "Abgabe"
+        })),
+        ...data.documents.filter(d => d.deadline).map(d => ({
+          id: "document_" + d.id, date: d.deadline, time: "",
+          title: `ABGABE Dokument: ${d.title}`,
+          description: `NRM28 / MA48 – Dokumentenabgabe. ${d.description || ""}`,
+          location: "", isDeadline: true
+        }))
+      ];
+
+      const downloadCalendar = (events, fileName = "NRM28-Kalender.ics") => {
+        const valid = events.filter(ev => /^\d{4}-\d{2}-\d{2}$/.test(ev.date || ""));
+        if (!valid.length) { alert("Keine Termine mit gültigem Datum vorhanden."); return; }
+        const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+        const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//NRM28 MA48//Group Planner V3//DE", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:NRM28 MA48"];
+        valid.forEach(ev => {
+          lines.push("BEGIN:VEVENT", `UID:${String(ev.id).replace(/[^a-zA-Z0-9_-]/g, "_")}@nrm28`, `DTSTAMP:${stamp}`,
+            `SUMMARY:${calendarEscape(ev.title)}`, `DESCRIPTION:${calendarEscape(ev.description)}`);
+          if (ev.location) lines.push(`LOCATION:${calendarEscape(ev.location)}`);
+          if (/^\d{2}:\d{2}$/.test(ev.time || "")) {
+            lines.push(`DTSTART;TZID=Europe/Vienna:${calendarDate(ev.date)}T${ev.time.replace(":", "")}00`);
+            lines.push(`DURATION:${ev.isDeadline ? "PT1M" : "PT1H"}`);
+          } else {
+            lines.push(`DTSTART;VALUE=DATE:${calendarDate(ev.date)}`, "DURATION:P1D");
+          }
+          lines.push("BEGIN:VALARM", `TRIGGER:${ev.isDeadline ? "-P1D" : "-PT1H"}`, "ACTION:DISPLAY",
+            `DESCRIPTION:${calendarEscape("Erinnerung: " + ev.title)}`, "END:VALARM", "END:VEVENT");
+        });
+        lines.push("END:VCALENDAR");
+        const blob = new Blob([lines.join("\r\n") + "\r\n"], { type: "text/calendar;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url; link.download = fileName; document.body.appendChild(link);
+        link.click(); link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+      };
+
+      const openDocument = (docId) => {
+        setSelectedDocId(docId);
+        setSelectedCategory("Alle");
+        setOnlyMyDocuments(false);
+        setActiveTab("documents");
+      };
+
       // --- DATEI HOCHLADEN & HERUNTERLADEN ---
       const handleFileUpload = (e) => {
         const file = e.target.files[0];
@@ -243,7 +303,7 @@
 
         const reader = new FileReader();
         reader.onload = (ev) => {
-          const uploader = uploadMemberId ? getMember(uploadMemberId).name : "Redaktion";
+          const uploader = (uploadMemberId || selectedMemberId) ? getMember(uploadMemberId || selectedMemberId).name : "Redaktion";
           const newFileEntry = {
             id: "f_" + Date.now(),
             name: file.name,
@@ -271,7 +331,7 @@
       const handleAddExternalLink = (e) => {
         e.preventDefault();
         if (!externalLinkForm.name || !externalLinkForm.url || !activeDoc) return;
-        const uploader = externalLinkForm.memberId ? getMember(externalLinkForm.memberId).name : "Redaktion";
+        const uploader = (externalLinkForm.memberId || selectedMemberId) ? getMember(externalLinkForm.memberId || selectedMemberId).name : "Redaktion";
         const newLinkEntry = {
           id: "f_" + Date.now(),
           name: externalLinkForm.name,
@@ -501,7 +561,7 @@
             if (d.id !== activeDoc.id) return d;
             return {
               ...d,
-              notes: [{ id: "n_" + Date.now(), author: "Redaktion", text: newNoteText, time: new Date().toLocaleString("de-DE") }, ...d.notes]
+              notes: [{ id: "n_" + Date.now(), author: selectedMemberId ? getMember(selectedMemberId).name : "Redaktion", text: newNoteText, time: new Date().toLocaleString("de-DE") }, ...d.notes]
             };
           })
         }));
@@ -555,9 +615,27 @@
         reader.readAsText(file);
       };
 
-      const filteredDocs = selectedCategory === "Alle"
-        ? data.documents
-        : data.documents.filter(d => d.category === selectedCategory);
+      const selectedMember = data.members.find(m => m.id === selectedMemberId) || null;
+      const allSteps = data.documents.flatMap(doc => (doc.workflow || []).map((step, index) => ({
+        ...step, doc, index,
+        blocked: index > 0 && !doc.workflow[index - 1].done && !step.done
+      })));
+      const mySteps = allSteps.filter(step => !selectedMemberId || step.memberId === selectedMemberId);
+      const unfinishedSteps = mySteps.filter(step => !step.done);
+      const personalDocumentIds = new Set(data.documents.filter(d =>
+        (d.workflow || []).some(w => w.memberId === selectedMemberId) ||
+        (d.responsibilities || []).some(r => r.memberId === selectedMemberId)
+      ).map(d => d.id));
+      const filteredDocs = data.documents.filter(d =>
+        (selectedCategory === "Alle" || d.category === selectedCategory) &&
+        (!onlyMyDocuments || !selectedMemberId || personalDocumentIds.has(d.id))
+      );
+      const nextEvents = buildCalendarEvents().filter(event => event.date)
+        .sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
+      const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Vienna" });
+      const upcomingEvents = nextEvents.filter(event => event.date >= today);
+      const blockedCount = unfinishedSteps.filter(step => step.blocked).length;
+      const completedSteps = allSteps.filter(step => step.done).length;
 
       return (
         <div className="min-h-screen flex flex-col bg-orange-50/30">
@@ -583,7 +661,15 @@
                 </div>
               </div>
 
-              <nav className="flex items-center gap-1 bg-orange-900/30 backdrop-blur-sm p-1 rounded-xl border border-white/15">
+              <nav className="flex flex-wrap items-center gap-1 bg-orange-900/30 backdrop-blur-sm p-1 rounded-xl border border-white/15">
+                <button
+                  onClick={() => setActiveTab("dashboard")}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
+                    activeTab === "dashboard" ? "bg-white text-orange-700 shadow-sm" : "text-orange-50 hover:bg-white/10"
+                  }`}
+                >
+                  <i className="fa-solid fa-chart-pie mr-1.5"></i>Dashboard
+                </button>
                 <button
                   onClick={() => setActiveTab("documents")}
                   className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
@@ -616,7 +702,15 @@
                 </button>
               </nav>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex items-center gap-2 bg-orange-950/40 px-3 py-1.5 border border-white/20 rounded-lg text-xs font-semibold">
+                  <i className="fa-solid fa-user"></i> Ich bin …
+                  <select aria-label="Mein Profil auswählen" value={selectedMemberId} onChange={e => setSelectedMemberId(e.target.value)}
+                    className="bg-white text-orange-900 rounded-md px-2 py-1 max-w-40">
+                    <option value="">Teamübersicht</option>
+                    {data.members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </select>
+                </label>
                 <button
                   onClick={exportData}
                   title="Kompletten Projektstand (inkl. hochgeladener Dateien) speichern & teilen"
@@ -634,6 +728,110 @@
 
           {/* MAIN CONTENT */}
           <main className="flex-1 max-w-7xl w-full mx-auto p-4">
+            {/* NEU IN V3: DASHBOARD & PERSÖNLICHE ANSICHT */}
+            {activeTab === "dashboard" && (
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-orange-600 to-amber-500 rounded-2xl px-6 py-6 text-white shadow-md">
+                  <p className="text-xs font-bold uppercase tracking-wider text-orange-100">NRM28 · MA48 · Version 3</p>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold mt-1">{selectedMember ? `Servus, ${selectedMember.name}!` : "Euer Gruppen-Dashboard"}</h2>
+                  <p className="text-sm mt-2 text-orange-50">{selectedMember ? "Hier siehst du deine Aufgaben, Blockierungen und anstehenden Termine." : "Alle Dokumente, Fortschritte und Termine der Redaktion auf einen Blick."}</p>
+                </div>
+
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="bg-white p-4 rounded-2xl border border-orange-200 shadow-sm">
+                    <p className="text-xs text-slate-500 font-semibold"><i className="fa-regular fa-file-lines text-orange-600 mr-1"></i> Dokumente</p>
+                    <p className="text-3xl font-extrabold text-orange-700 mt-2">{selectedMember ? personalDocumentIds.size : data.documents.length}</p>
+                    <p className="text-xs text-slate-400 mt-1">{selectedMember ? "Mit meiner Beteiligung" : "Insgesamt"}</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-orange-200 shadow-sm">
+                    <p className="text-xs text-slate-500 font-semibold"><i className="fa-solid fa-list-check text-orange-600 mr-1"></i> Offene Aufgaben</p>
+                    <p className="text-3xl font-extrabold text-orange-700 mt-2">{unfinishedSteps.length}</p>
+                    <p className="text-xs text-slate-400 mt-1">{selectedMember ? "Meine Arbeitsschritte" : "Im gesamten Team"}</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-orange-200 shadow-sm">
+                    <p className="text-xs text-slate-500 font-semibold"><i className="fa-solid fa-lock text-orange-600 mr-1"></i> Wartende Aufgaben</p>
+                    <p className="text-3xl font-extrabold text-amber-700 mt-2">{blockedCount}</p>
+                    <p className="text-xs text-slate-400 mt-1">Noch nicht freigegeben</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-orange-200 shadow-sm">
+                    <p className="text-xs text-slate-500 font-semibold"><i className="fa-regular fa-calendar text-orange-600 mr-1"></i> Kommende Termine</p>
+                    <p className="text-3xl font-extrabold text-orange-700 mt-2">{upcomingEvents.length}</p>
+                    <p className="text-xs text-slate-400 mt-1">Inkl. Dokumentenabgaben</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <section className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm">
+                    <div className="flex justify-between items-center mb-4 gap-3">
+                      <h3 className="font-bold text-lg text-slate-900"><i className="fa-solid fa-list-check text-orange-600 mr-2"></i>{selectedMember ? "Meine Aufgaben" : "Aufgaben des Teams"}</h3>
+                      <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">{unfinishedSteps.length} offen</span>
+                    </div>
+                    <div className="space-y-2 max-h-96 overflow-y-auto custom-scroll">
+                      {unfinishedSteps.length === 0 ? <p className="text-sm text-slate-500 py-6 text-center">Aktuell sind keine offenen Aufgaben vorhanden.</p> :
+                        unfinishedSteps.map(step => (
+                          <button key={step.doc.id + "_" + step.id} onClick={() => openDocument(step.doc.id)}
+                            className="w-full text-left rounded-xl border border-orange-100 hover:border-orange-400 hover:bg-orange-50 p-3 transition">
+                            <div className="flex justify-between gap-2 items-start">
+                              <span className="font-semibold text-sm text-slate-800">{step.title}</span>
+                              <span className={`text-[10px] shrink-0 px-2 py-0.5 rounded-full font-bold ${step.blocked ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>{step.blocked ? "Wartet" : "Bereit"}</span>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">{step.doc.title} · {getMember(step.memberId).name}</p>
+                            {step.blocked && <p className="text-xs text-amber-700 mt-1">Wartet auf {getMember(step.doc.workflow[step.index - 1].memberId).name}</p>}
+                          </button>
+                        ))}
+                    </div>
+                  </section>
+
+                  <section className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm">
+                    <div className="flex flex-wrap justify-between items-center mb-4 gap-3">
+                      <h3 className="font-bold text-lg text-slate-900"><i className="fa-solid fa-calendar-days text-orange-600 mr-2"></i>Nächste Termine & Abgaben</h3>
+                      <button onClick={() => downloadCalendar(buildCalendarEvents())} className="bg-orange-100 hover:bg-orange-200 text-orange-800 text-xs font-bold px-3 py-2 rounded-lg">
+                        <i className="fa-solid fa-file-arrow-down mr-1"></i> .ics exportieren
+                      </button>
+                    </div>
+                    <div className="space-y-2 max-h-96 overflow-y-auto custom-scroll">
+                      {upcomingEvents.length === 0 ? <p className="text-sm text-slate-500 py-6 text-center">Keine kommenden Termine eingetragen.</p> :
+                        upcomingEvents.slice(0, 10).map(event => (
+                          <div key={event.id} className="flex items-start justify-between gap-3 rounded-xl bg-orange-50/50 border border-orange-100 p-3">
+                            <div>
+                              <span className={`text-[10px] font-bold uppercase rounded-full px-2 py-0.5 ${event.isDeadline ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-800"}`}>{event.isDeadline ? "Abgabe" : "Treffen"}</span>
+                              <p className="text-sm font-semibold text-slate-800 mt-1">{event.title}</p>
+                              <p className="text-xs text-slate-500 mt-1">{event.date}{event.time ? ` · ${event.time} Uhr` : " · ganztägig"}</p>
+                            </div>
+                            <button onClick={() => downloadCalendar([event], "NRM28-" + event.id + ".ics")} title="Kalendereintrag mit Erinnerung herunterladen"
+                              className="shrink-0 bg-white rounded-lg border border-orange-200 p-2 text-orange-700 hover:bg-orange-100" aria-label="Kalenderdatei herunterladen">
+                              <i className="fa-solid fa-calendar-plus"></i>
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  </section>
+                </div>
+
+                <section className="bg-white rounded-2xl border border-orange-200 p-5 shadow-sm">
+                  <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
+                    <h3 className="font-bold text-lg"><i className="fa-solid fa-bars-progress text-orange-600 mr-2"></i>Fortschritt der Dokumente</h3>
+                    <span className="text-xs text-slate-500">{completedSteps} von {allSteps.length} Arbeitsschritten abgeschlossen</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {data.documents.filter(d => !selectedMember || personalDocumentIds.has(d.id)).map(d => (
+                      <button key={d.id} onClick={() => openDocument(d.id)} className="rounded-xl text-left p-3 border border-slate-200 hover:border-orange-400 hover:bg-orange-50 transition">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-semibold text-sm text-slate-800">{d.title}</span>
+                          <span className="text-sm font-extrabold text-orange-700">{getProgress(d)}%</span>
+                        </div>
+                        <div className="h-2 rounded-full overflow-hidden bg-slate-200 mt-2">
+                          <div className="h-full rounded-full bg-orange-500" style={{ width: getProgress(d) + "%" }}></div>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-2">{d.deadline ? `Abgabe: ${d.deadline}` : "Keine Abgabefrist"}</p>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+                <p className="text-xs text-slate-500">Hinweis: Version 3 speichert weiterhin nur im jeweiligen Browser. WhatsApp/SMS werden nicht automatisch versendet. Kalender-Erinnerungen werden erst nach dem Import der .ics-Datei in einen Kalender aktiv und hängen von dessen Einstellungen ab.</p>
+              </div>
+            )}
+
             {/* TAB 1: DOKUMENTE, ÜBERSICHTSBLATT & DATEI-AUSTAUSCH */}
             {activeTab === "documents" && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -696,6 +894,12 @@
                       <button type="submit" className="px-2.5 py-1.5 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-lg text-xs font-bold">+</button>
                     </form>
 
+                    {selectedMember && (
+                      <label className="flex items-center gap-2 text-xs text-orange-800 font-semibold mb-3 cursor-pointer">
+                        <input type="checkbox" checked={onlyMyDocuments} onChange={e => setOnlyMyDocuments(e.target.checked)} />
+                        Nur meine Dokumente anzeigen
+                      </label>
+                    )}
                     <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 mb-2">Beiträge & Dokumente</h3>
                     <div className="space-y-2">
                       {filteredDocs.map(doc => {
@@ -787,6 +991,14 @@
                           </button>
                         </div>
 
+                        {activeDoc.deadline && <button onClick={() => downloadCalendar([{
+                          id: "document_" + activeDoc.id, date: activeDoc.deadline, time: "", title: `ABGABE Dokument: ${activeDoc.title}`,
+                          description: activeDoc.description || "", location: "", isDeadline: true
+                        }], "NRM28-Abgabe-" + activeDoc.id + ".ics")}
+                          title="Abgabe mit Erinnerung als Kalenderdatei herunterladen"
+                          className="px-2 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-xl text-xs border border-orange-200/60">
+                          <i className="fa-solid fa-calendar-plus mr-1"></i> .ics
+                        </button>}
                         <button
                           onClick={() => setEditingDocMeta({ ...activeDoc })}
                           title="Titel, Kategorie oder Abgabetermin bearbeiten"
@@ -1236,7 +1448,10 @@
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-orange-200/70">
                   <h2 className="text-xl font-bold mb-1">Übersicht: Redaktionssitzungen & Abgabetermine</h2>
-                  <p className="text-xs text-slate-500 mb-4">Mit einem Klick Erinnerungen per WhatsApp oder SMS senden oder Termine bearbeiten</p>
+                  <p className="text-xs text-slate-500 mb-4">Termine bearbeiten, Nachrichten manuell vorbereiten oder Kalenderdateien mit Erinnerungen herunterladen.</p>
+                  <button onClick={() => downloadCalendar(buildCalendarEvents())} className="mb-4 px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-xs font-bold">
+                    <i className="fa-solid fa-calendar-plus mr-1"></i> Alle Termine & Dokumentenabgaben als .ics exportieren
+                  </button>
 
                   <div className="space-y-3">
                     {data.meetings.map(m => (
@@ -1257,6 +1472,15 @@
                         </div>
 
                         <div className="flex items-center gap-1.5">
+                          <button onClick={() => downloadCalendar([{
+                            id: "meeting_" + m.id, date: m.date, time: m.time,
+                            title: `${m.type === "Abgabe" ? "ABGABE" : "TREFFEN"}: ${m.title}`,
+                            description: `NRM28 / MA48 – ${m.type}`, location: m.location, isDeadline: m.type === "Abgabe"
+                          }], "NRM28-Termin-" + m.id + ".ics")}
+                            title="Als Kalenderdatei mit Erinnerung herunterladen"
+                            className="px-3 py-2 bg-white border border-orange-200 text-orange-800 hover:bg-orange-100 rounded-xl text-xs font-semibold flex items-center gap-1">
+                            <i className="fa-solid fa-calendar-plus"></i> .ics
+                          </button>
                           <button
                             onClick={() =>
                               sendWhatsApp(
