@@ -2328,3 +2328,2409 @@
   </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nachrichten- und Redaktionsmedium (NRM)</title>
+  <!-- Dynamisches Favicon & Smartphone App-Icon -->
+  <link id="app-favicon" rel="icon" type="image/png" href="48er.png" />
+  <link id="app-touch-icon" rel="apple-touch-icon" href="48er.png" />
+  <!-- Tailwind CSS (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons (Lizenzfrei) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <!-- React & Babel (CDN) -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Firebase App & Firestore SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAWxyk4OU8NkDRMNSdrmFTr0qIJwY-1d3c",
+      authDomain: "digitalisierung-nrm.firebaseapp.com",
+      projectId: "digitalisierung-nrm",
+      storageBucket: "digitalisierung-nrm.firebasestorage.app",
+      messagingSenderId: "189073900648",
+      appId: "1:189073900648:web:dc5f71ce827d8dd811e7dd",
+      measurementId: "G-096VQ2961F"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.nrmFirebase = { db, doc, setDoc, getDoc, onSnapshot };
+    window.dispatchEvent(new Event("firebase-ready"));
+  </script>
+
+  <style>
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #fdba74; border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-orange-50/40 text-slate-800">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // Eingebettetes, transparentes 48er-Vektor-Logo als Fallback
+    const FALLBACK_48ER_SVG = "data:image/svg+xml;utf8," + encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 360" fill="none">
+        <text x="25" y="295" fill="#0d6efd" font-family="Arial, sans-serif" font-weight="900" font-style="italic" font-size="78">DIE</text>
+        <path d="M210 55 L95 205 L245 190 M195 95 L165 305" stroke="#0d6efd" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M315 165 C255 120 265 45 320 65 C335 72 340 90 340 90 C340 90 355 55 390 65 C435 78 415 145 350 175 C275 210 235 265 275 295 C315 320 395 295 390 235 C386 195 345 182 315 165 Z" stroke="#ef233c" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="385" y="295" fill="#0d6efd" font-family="Arial, sans-serif" font-weight="900" font-style="italic" font-size="72">ER</text>
+      </svg>
+    `);
+
+    const PREDEFINED_ROLES = ["Teamleiter", "MitarbeiterIn", "Support"];
+
+    // --- INITIALE BEISPIELDATEN ---
+    const INITIAL_DATA = {
+      categories: ["Allgemein", "Redaktion & Beiträge", "Recherche & Daten", "Layout & Medien", "Organisation"],
+      members: [
+        { id: "m1", name: "Anna M.", role: "Teamleiter", phone: "+436641234567", color: "bg-orange-600" },
+        { id: "m2", name: "Lukas K.", role: "MitarbeiterIn", phone: "+436609876543", color: "bg-amber-600" },
+        { id: "m3", name: "Sarah W.", role: "Support", phone: "+436761122334", color: "bg-red-600" },
+        { id: "m4", name: "Max B.", role: "Grafik & Layout", phone: "+436995566778", color: "bg-blue-600" }
+      ],
+      meetings: [
+        { id: "mt1", title: "Redaktionssitzung & Themenplanung", date: "2026-11-10", time: "17:00", location: "Online / Besprechungsraum", type: "Treffen" },
+        { id: "mt2", title: "Zwischenstand & Layout-Check", date: "2026-11-18", time: "18:30", location: "Redaktionsbüro", type: "Treffen" },
+        { id: "mt3", title: "Redaktionsschluss / Finale Abgabe", date: "2026-11-28", time: "23:59", location: "Upload-Portal", type: "Abgabe" }
+      ],
+      documents: [
+        {
+          id: "d1",
+          title: "Hauptbeitrag: Aktuelle Projektanalyse & Bericht",
+          category: "Redaktion & Beiträge",
+          deadline: "2026-11-20",
+          description: "Gemeinsamer Hauptartikel mit Einleitung, Hintergrunddaten, Interview und Fazit.",
+          responsibilities: [
+            { memberId: "m1", task: "Kapitel 1: Leitartikel & Zielsetzung" },
+            { memberId: "m2", task: "Kapitel 2: Datenauswertung & Hintergrund" },
+            { memberId: "m3", task: "Kapitel 3: Feinschliff & Endlektorat" },
+            { memberId: "m4", task: "Titelbild, Infografiken & Layout" }
+          ],
+          workflow: [
+            { id: "w1", step: 1, title: "Grundstruktur & Leitfaden anlegen", memberId: "m1", done: true, completedAt: "25.10.2026" },
+            { id: "w2", step: 2, title: "Recherche-Daten & Zahlen einfügen (wartet auf Schritt 1)", memberId: "m2", done: false, completedAt: null },
+            { id: "w3", step: 3, title: "Text ausformulieren & Lektorat (wartet auf Schritt 2)", memberId: "m3", done: false, completedAt: null },
+            { id: "w4", step: 4, title: "Finales Satz-Layout & PDF-Freigabe (wartet auf Schritt 3)", memberId: "m4", done: false, completedAt: null }
+          ],
+          files: [],
+          content: "# Hauptbeitrag: Projektanalyse\n\n## 1. Einleitung (Anna M.)\nDie Grundstruktur steht bereits. Hier wird der Aufhänger unseres Beitrags beschrieben...\n\n## 2. Hintergrund & Zahlen (Lukas K.)\n[Hier bitte die recherchierten Daten eintragen oder als Datei anhängen]\n\n## 3. Fazit & Ausblick (Sarah W.)\n[Folgt nach der Datenauswertung]",
+          notes: [
+            { id: "n1", author: "Anna M.", text: "Ich habe den ersten Teil fertiggestellt. Lukas, du kannst jetzt mit den Zahlen starten!", time: "Gestern, 14:20" }
+          ]
+        },
+        {
+          id: "d2",
+          title: "Quellen- & Bildnachweis",
+          category: "Recherche & Daten",
+          deadline: "2026-11-14",
+          description: "Sammlung aller verwendeten Quellen, Interviews und Bildrechte.",
+          responsibilities: [
+            { memberId: "m3", task: "Quellen prüfen & einheitlich formatieren" },
+            { memberId: "m1", task: "Freigaben ergänzen" }
+          ],
+          workflow: [
+            { id: "w2_1", step: 1, title: "Quellenliste zusammentragen", memberId: "m1", done: true, completedAt: "24.10.2026" },
+            { id: "w2_2", step: 2, title: "Zitierweise & Bildrechte finalisieren", memberId: "m3", done: true, completedAt: "26.10.2026" }
+          ],
+          files: [],
+          content: "# Quellen- & Bildverzeichnis\n\n- Interne Erhebung (2026)\n- Fotodokumentation Redaktionsteam\n",
+          notes: []
+        }
+      ]
+    };
+
+    function App() {
+      const [logoSrc, setLogoSrc] = useState(FALLBACK_48ER_SVG);
+      const [syncStatus, setSyncStatus] = useState("Verbinde mit Cloud...");
+      const [syncError, setSyncError] = useState(null);
+
+      // Verhindert, dass eingehende Snapshots eigene ungespeicherte Tipp-Änderungen überschreiben
+      const isSavingRef = useRef(false);
+      const saveTimeoutRef = useRef(null);
+
+      const [data, setData] = useState(() => {
+        const saved = localStorage.getItem("nrm_data_v2") || localStorage.getItem("nrm_data_v1");
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            parsed.documents = (parsed.documents || []).map(d => ({
+              ...d,
+              files: d.files || [],
+              notes: d.notes || [],
+              responsibilities: d.responsibilities || [],
+              workflow: d.workflow || []
+            }));
+            return parsed;
+          } catch (e) {
+            return INITIAL_DATA;
+          }
+        }
+        return INITIAL_DATA;
+      });
+
+      const [currentUserId, setCurrentUserId] = useState(() => {
+        return localStorage.getItem("nrm_current_user_id") || "m1";
+      });
+
+      useEffect(() => {
+        if (currentUserId) {
+          localStorage.setItem("nrm_current_user_id", currentUserId);
+        }
+      }, [currentUserId]);
+
+      useEffect(() => {
+        if (data.members && data.members.length > 0) {
+          const exists = data.members.some(m => m.id === currentUserId);
+          if (!exists) {
+            setCurrentUserId(data.members[0].id);
+          }
+        }
+      }, [data.members]);
+
+      // 48er.png laden und weißen Hintergrund transparent freistellen
+      useEffect(() => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const d = imgData.data;
+
+            for (let i = 0; i < d.length; i += 4) {
+              const r = d[i], g = d[i + 1], b = d[i + 2];
+              if (r > 240 && g > 240 && b > 240) {
+                d[i + 3] = 0;
+              } else if (r > 215 && g > 215 && b > 215 && Math.abs(r - g) < 15 && Math.abs(r - b) < 15) {
+                const brightness = (r + g + b) / 3;
+                d[i + 3] = Math.max(0, Math.min(255, Math.round((240 - brightness) * 10)));
+              }
+            }
+            ctx.putImageData(imgData, 0, 0);
+            const transparentDataUrl = canvas.toDataURL("image/png");
+            setLogoSrc(transparentDataUrl);
+
+            const fav = document.getElementById("app-favicon");
+            const touch = document.getElementById("app-touch-icon");
+            if (fav) fav.href = transparentDataUrl;
+            if (touch) touch.href = transparentDataUrl;
+          } catch (e) {
+            setLogoSrc("48er.png");
+          }
+        };
+        img.src = "48er.png";
+      }, []);
+
+      // Hilfsfunktion: Bereinigt undefined-Werte, da Firestore bei 'undefined' das Speichern komplett abbricht!
+      const sanitizeForFirestore = (obj) => {
+        return JSON.parse(JSON.stringify(obj));
+      };
+
+      // Direktes Schreiben in Firebase mit klarer Fehlermeldung
+      const pushToFirestore = async (payload) => {
+        if (!window.nrmFirebase) return;
+        const { db, doc, setDoc } = window.nrmFirebase;
+        const docRef = doc(db, "nrm_projekte", "hauptstand");
+        try {
+          isSavingRef.current = true;
+          setSyncStatus("💾 Speichere in Cloud...");
+          const cleanPayload = sanitizeForFirestore(payload);
+          await setDoc(docRef, cleanPayload);
+          setSyncError(null);
+          setSyncStatus("✅ Alle Änderungen in Cloud gespeichert");
+        } catch (err) {
+          console.error("Cloud-Speicherfehler:", err);
+          if (err.code === "permission-denied") {
+            setSyncError("Schreibzugriff blockiert! Bitte in Firebase Console -> Firestore -> Regeln 'allow read, write: if true;' aktivieren.");
+            setSyncStatus("⚠️ Cloud-Schreibschutz aktiv (Nur lokal gespeichert)");
+          } else {
+            setSyncError(`Speicherfehler: ${err.message}`);
+            setSyncStatus("⚠️ Fehler beim Cloud-Speichern");
+          }
+        } finally {
+          setTimeout(() => {
+            isSavingRef.current = false;
+          }, 400);
+        }
+      };
+
+      // Firebase Echtzeit-Synchronisation (Initialisierung + Live-Empfang)
+      useEffect(() => {
+        let unsubscribe = null;
+
+        const initFirebaseSync = () => {
+          if (!window.nrmFirebase) return;
+          const { db, doc, onSnapshot } = window.nrmFirebase;
+          const docRef = doc(db, "nrm_projekte", "hauptstand");
+
+          unsubscribe = onSnapshot(
+            docRef,
+            (snapshot) => {
+              // Eigene lokale Schreibvorgänge nicht sofort wieder überschreiben
+              if (snapshot.metadata.hasPendingWrites || isSavingRef.current) {
+                return;
+              }
+
+              if (snapshot.exists()) {
+                const cloudData = snapshot.data();
+                cloudData.documents = (cloudData.documents || []).map(d => ({
+                  ...d,
+                  files: d.files || [],
+                  notes: d.notes || [],
+                  responsibilities: d.responsibilities || [],
+                  workflow: d.workflow || []
+                }));
+                setData(cloudData);
+                try {
+                  localStorage.setItem("nrm_data_v2", JSON.stringify(cloudData));
+                } catch (e) {}
+                setSyncError(null);
+                setSyncStatus("Live verbunden (Cloud)");
+              } else {
+                // Erstmaliges Anlegen in der Cloud
+                pushToFirestore(INITIAL_DATA);
+              }
+            },
+            (error) => {
+              console.error("Firestore Listener Error:", error);
+              if (error.code === "permission-denied") {
+                setSyncError("Zugriff verweigert! Bitte in der Firebase Console unter 'Firestore Database -> Regeln' den Lese-/Schreibzugriff freigeben.");
+              }
+              setSyncStatus("Offline-Modus (Lokal)");
+            }
+          );
+        };
+
+        if (window.nrmFirebase) {
+          initFirebaseSync();
+        } else {
+          window.addEventListener("firebase-ready", initFirebaseSync);
+        }
+
+        return () => {
+          if (unsubscribe) unsubscribe();
+        };
+      }, []);
+
+      // Speichert Änderungen sofort lokal und verzögerungsfrei (bzw. beim Tippen leicht gebündelt) in Firebase
+      const updateDataAndCloud = (updater, debounceMs = 0) => {
+        setData(prev => {
+          const newData = typeof updater === "function" ? updater(prev) : updater;
+          try {
+            localStorage.setItem("nrm_data_v2", JSON.stringify(newData));
+          } catch (e) {
+            console.warn("Lokaler Speicher voll:", e);
+          }
+
+          if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+          }
+
+          if (debounceMs > 0) {
+            setSyncStatus("✏️ Tippe... (speichert gleich)");
+            saveTimeoutRef.current = setTimeout(() => {
+              pushToFirestore(newData);
+            }, debounceMs);
+          } else {
+            pushToFirestore(newData);
+          }
+
+          return newData;
+        });
+      };
+
+      const [activeTab, setActiveTab] = useState("documents");
+      const [selectedCategory, setSelectedCategory] = useState("Alle");
+      const [selectedDocId, setSelectedDocId] = useState(data.documents[0]?.id || null);
+      const [docViewMode, setDocViewMode] = useState("split");
+      const [notificationModal, setNotificationModal] = useState(null);
+
+      const [calendarMonth, setCalendarMonth] = useState(() => {
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), 1);
+      });
+
+      const [newDocModal, setNewDocModal] = useState(false);
+      const [newDocForm, setNewDocForm] = useState({ title: "", category: "Allgemein", deadline: "", description: "" });
+      const [newStepForm, setNewStepForm] = useState({ title: "", memberId: "" });
+      const [newRespForm, setNewRespForm] = useState({ task: "", memberId: "" });
+      const [newNoteText, setNewNoteText] = useState("");
+      const [newMeetingForm, setNewMeetingForm] = useState({ title: "", date: "", time: "17:00", location: "", type: "Treffen" });
+
+      const [newMemberForm, setNewMemberForm] = useState({
+        name: "",
+        roleType: "MitarbeiterIn",
+        customRole: "",
+        phone: ""
+      });
+      const [newCategoryName, setNewCategoryName] = useState("");
+
+      const [uploadMemberId, setUploadMemberId] = useState("");
+      const [uploadComment, setUploadComment] = useState("");
+      const [externalLinkForm, setExternalLinkForm] = useState({ name: "", url: "", memberId: "" });
+      const [showLinkForm, setShowLinkForm] = useState(false);
+
+      const [editingMember, setEditingMember] = useState(null);
+      const [editingMeeting, setEditingMeeting] = useState(null);
+      const [editingDocMeta, setEditingDocMeta] = useState(null);
+      const [editingStep, setEditingStep] = useState(null);
+
+      const activeDoc = (data.documents || []).find(d => d.id === selectedDocId) || (data.documents || [])[0];
+
+      const getMember = (id) => (data.members || []).find(m => m.id === id) || { id: "", name: "Redaktionsmitglied", phone: "", color: "bg-orange-500", role: "MitarbeiterIn" };
+
+      const currentUser = getMember(currentUserId);
+      const isCurrentUserLeader = currentUser && currentUser.role === "Teamleiter";
+
+      const canUserToggleStep = (step) => {
+        if (!currentUser) return false;
+        return currentUser.role === "Teamleiter" || step.memberId === currentUser.id;
+      };
+
+      const getProgress = (doc) => {
+        if (!doc || !doc.workflow || doc.workflow.length === 0) return 0;
+        const doneCount = doc.workflow.filter(w => w.done).length;
+        return Math.round((doneCount / doc.workflow.length) * 100);
+      };
+
+      const getDaysLeft = (dateStr) => {
+        if (!dateStr) return null;
+        const diff = new Date(dateStr) - new Date();
+        return Math.ceil(diff / (1000 * 60 * 60 * 24));
+      };
+
+      const formatFileSize = (bytes) => {
+        if (!bytes) return "";
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+        return (bytes / 1048576).toFixed(2) + " MB";
+      };
+
+      // --- KALENDER-SYNCHRONISATION (.ICS) ---
+      const createICSDateTime = (dateStr, timeStr = "09:00", addHours = 0) => {
+        const cleanDate = (dateStr || "2026-11-10").replace(/-/g, "");
+        const parts = (timeStr || "09:00").split(":");
+        let hour = parseInt(parts[0] || "9", 10) + addHours;
+        const minute = parts[1] || "00";
+        if (hour >= 24) hour = 23;
+        const hh = String(hour).padStart(2, "0");
+        return `${cleanDate}T${hh}${minute}00`;
+      };
+
+      const downloadICSFile = (eventsList, filename = "NRM-Kalender-Sync.ics") => {
+        if (!eventsList || eventsList.length === 0) {
+          alert("Keine Termine zum Synchronisieren vorhanden.");
+          return;
+        }
+        const nowStamp = new Date().toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+        const lines = [
+          "BEGIN:VCALENDAR",
+          "VERSION:2.0",
+          "PRODID:-//Nachrichten- und Redaktionsmedium (NRM)//DE",
+          "CALSCALE:GREGORIAN",
+          "METHOD:PUBLISH",
+          "X-WR-CALNAME:NRM Redaktionskalender"
+        ];
+
+        eventsList.forEach(ev => {
+          const dtStart = createICSDateTime(ev.date, ev.time || "09:00", 0);
+          const dtEnd = createICSDateTime(ev.date, ev.time || "09:00", 1);
+          lines.push(
+            "BEGIN:VEVENT",
+            `UID:${ev.id}@nrm-redaktion.local`,
+            `DTSTAMP:${nowStamp}`,
+            `DTSTART:${dtStart}`,
+            `DTEND:${dtEnd}`,
+            `SUMMARY:${(ev.title || "").replace(/[,;\\]/g, " ")}`,
+            `LOCATION:${(ev.location || "NRM Redaktion").replace(/[,;\\]/g, " ")}`,
+            `DESCRIPTION:${(ev.description || "Termin aus dem Nachrichten- und Redaktionsmedium (NRM)").replace(/\n/g, "\\n")}`,
+            "BEGIN:VALARM",
+            "TRIGGER:-PT24H",
+            "ACTION:DISPLAY",
+            "DESCRIPTION:Erinnerung: NRM Termin",
+            "END:VALARM",
+            "END:VEVENT"
+          );
+        });
+
+        lines.push("END:VCALENDAR");
+
+        const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+
+      const getAllCalendarEvents = () => {
+        const meetingEvents = (data.meetings || []).map(m => ({
+          id: m.id,
+          title: `[${m.type}] ${m.title}`,
+          rawTitle: m.title,
+          date: m.date,
+          time: m.time || "17:00",
+          location: m.location || "Redaktion",
+          type: m.type,
+          description: `NRM ${m.type}: ${m.title} (${m.location || ""})`,
+          isDocDeadline: false,
+          originalMeeting: m
+        }));
+
+        const docDeadlineEvents = (data.documents || [])
+          .filter(d => d.deadline)
+          .map(d => ({
+            id: "doc_dl_" + d.id,
+            title: `[Dokument-Abgabe] ${d.title}`,
+            rawTitle: `Abgabe: ${d.title}`,
+            date: d.deadline,
+            time: "23:59",
+            location: `Kategorie: ${d.category}`,
+            type: "Dokument-Deadline",
+            description: `Abgabetermin für Dokument "${d.title}" (${getProgress(d)}% erledigt).`,
+            isDocDeadline: true,
+            docId: d.id
+          }));
+
+        return [...meetingEvents, ...docDeadlineEvents].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+      };
+
+      const sendWhatsApp = (phone, message) => {
+        const cleanPhone = (phone || "").replace(/[^0-9+]/g, "").replace(/^\+/, "");
+        const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+        window.open(url, "_blank");
+      };
+
+      const sendSMS = (phone, message) => {
+        const cleanPhone = (phone || "").replace(/[^0-9+,]/g, "");
+        const url = `sms:${cleanPhone}?body=${encodeURIComponent(message)}`;
+        window.location.href = url;
+      };
+
+      // --- DATEI HOCHLADEN & HERUNTERLADEN (INKL. 700 KB CLOUD-SCHUTZ) ---
+      const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file || !activeDoc) return;
+
+        // Firestore hat ein hartes 1-MB-Limit pro Gesamtdokument!
+        if (file.size > 700 * 1024) {
+          alert("Achtung: Diese Datei ist größer als 700 KB!\n\nDa die kostenlose Cloud-Datenbank (Firestore) maximal 1 MB pro Projektstand erlaubt, würde eine so große Datei das Cloud-Speichern blockieren.\n\nBitte nutze für größere Dateien rechts oben den Button 'Cloud-Link ergänzen' (z.B. Google Drive, OneDrive, Dropbox).");
+          e.target.value = "";
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const uploader = uploadMemberId ? getMember(uploadMemberId).name : currentUser.name;
+          const newFileEntry = {
+            id: "f_" + Date.now(),
+            name: file.name,
+            size: file.size,
+            type: file.type || "application/octet-stream",
+            dataUrl: ev.target.result,
+            uploadedBy: uploader,
+            comment: uploadComment || "Zur weiteren Bearbeitung",
+            uploadedAt: new Date().toLocaleString("de-DE"),
+            isExternal: false
+          };
+
+          updateDataAndCloud(prev => ({
+            ...prev,
+            documents: prev.documents.map(d =>
+              d.id === activeDoc.id ? { ...d, files: [newFileEntry, ...(d.files || [])] } : d
+            )
+          }));
+          setUploadComment("");
+          e.target.value = "";
+        };
+        reader.readAsDataURL(file);
+      };
+
+      const handleAddExternalLink = (e) => {
+        e.preventDefault();
+        if (!externalLinkForm.name || !externalLinkForm.url || !activeDoc) return;
+        const uploader = externalLinkForm.memberId ? getMember(externalLinkForm.memberId).name : currentUser.name;
+        const newLinkEntry = {
+          id: "f_" + Date.now(),
+          name: externalLinkForm.name,
+          size: 0,
+          type: "link",
+          dataUrl: externalLinkForm.url,
+          uploadedBy: uploader,
+          comment: "Externer Cloud-Link",
+          uploadedAt: new Date().toLocaleString("de-DE"),
+          isExternal: true
+        };
+
+        updateDataAndCloud(prev => ({
+          ...prev,
+          documents: prev.documents.map(d =>
+            d.id === activeDoc.id ? { ...d, files: [newLinkEntry, ...(d.files || [])] } : d
+          )
+        }));
+        setExternalLinkForm({ name: "", url: "", memberId: "" });
+        setShowLinkForm(false);
+      };
+
+      const deleteFile = (fileId) => {
+        if (!confirm("Diesen Datei-Anhang wirklich entfernen?")) return;
+        updateDataAndCloud(prev => ({
+          ...prev,
+          documents: prev.documents.map(d =>
+            d.id === activeDoc.id ? { ...d, files: (d.files || []).filter(f => f.id !== fileId) } : d
+          )
+        }));
+      };
+
+      // --- BEARBEITEN-FUNKTIONEN ---
+      const openEditMemberModal = (member) => {
+        const isPredefined = PREDEFINED_ROLES.includes(member.role);
+        setEditingMember({
+          ...member,
+          roleType: isPredefined ? member.role : "andere",
+          customRole: isPredefined ? "" : member.role
+        });
+      };
+
+      const saveEditedMember = (e) => {
+        e.preventDefault();
+        if (!editingMember || !editingMember.name) return;
+        const finalRole = editingMember.roleType === "andere"
+          ? (editingMember.customRole.trim() || "Andere")
+          : editingMember.roleType;
+
+        const updatedMember = {
+          id: editingMember.id,
+          name: editingMember.name,
+          role: finalRole,
+          phone: editingMember.phone || "",
+          color: editingMember.color || "bg-orange-600"
+        };
+
+        updateDataAndCloud(prev => ({
+          ...prev,
+          members: prev.members.map(m => m.id === updatedMember.id ? updatedMember : m)
+        }));
+        setEditingMember(null);
+      };
+
+      const saveEditedMeeting = (e) => {
+        e.preventDefault();
+        if (!editingMeeting || !editingMeeting.title) return;
+        updateDataAndCloud(prev => ({
+          ...prev,
+          meetings: prev.meetings.map(m => m.id === editingMeeting.id ? editingMeeting : m)
+        }));
+        setEditingMeeting(null);
+      };
+
+      const saveEditedDocMeta = (e) => {
+        e.preventDefault();
+        if (!editingDocMeta || !editingDocMeta.title) return;
+        updateDataAndCloud(prev => ({
+          ...prev,
+          documents: prev.documents.map(d =>
+            d.id === editingDocMeta.id
+              ? { ...d, title: editingDocMeta.title, category: editingDocMeta.category, deadline: editingDocMeta.deadline || "", description: editingDocMeta.description || "" }
+              : d
+          )
+        }));
+        setEditingDocMeta(null);
+      };
+
+      const saveEditedStep = (e) => {
+        e.preventDefault();
+        if (!editingStep || !editingStep.title) return;
+        updateDataAndCloud(prev => ({
+          ...prev,
+          documents: prev.documents.map(d => {
+            if (d.id !== activeDoc.id) return d;
+            return {
+              ...d,
+              workflow: d.workflow.map(w => w.id === editingStep.id ? { ...w, title: editingStep.title, memberId: editingStep.memberId } : w)
+            };
+          })
+        }));
+        setEditingStep(null);
+      };
+
+      // --- LÖSCH-FUNKTIONEN ---
+      const deleteMember = (memberId, memberName) => {
+        if (!confirm(`Möchtest du "${memberName}" wirklich aus den Kontakten löschen?`)) return;
+        updateDataAndCloud(prev => ({
+          ...prev,
+          members: prev.members.filter(m => m.id !== memberId),
+          documents: prev.documents.map(doc => ({
+            ...doc,
+            responsibilities: (doc.responsibilities || []).filter(r => r.memberId !== memberId),
+            workflow: (doc.workflow || []).filter(w => w.memberId !== memberId)
+          }))
+        }));
+      };
+
+      const deleteDocument = (docId, docTitle) => {
+        if (!confirm(`Dokument "${docTitle}" wirklich unwiderruflich löschen?`)) return;
+        updateDataAndCloud(prev => {
+          const remaining = prev.documents.filter(d => d.id !== docId);
+          if (selectedDocId === docId) {
+            setSelectedDocId(remaining[0]?.id || null);
+          }
+          return { ...prev, documents: remaining };
+        });
+      };
+
+      const deleteWorkflowStep = (stepId) => {
+        updateDataAndCloud(prev => ({
+          ...prev,
+          documents: prev.documents.map(d => {
+            if (d.id !== activeDoc.id) return d;
+            return { ...d, workflow: d.workflow.filter(w => w.id !== stepId) };
+          })
+        }));
+      };
+
+      const deleteResponsibility = (index) => {
+        updateDataAndCloud(prev => ({
+          ...prev,
+          documents: prev.documents.map(d => {
+            if (d.id !== activeDoc.id) return d;
+            return { ...d, responsibilities: d.responsibilities.filter((_, i) => i !== index) };
+          })
+        }));
+      };
+
+      const deleteMeeting = (meetingId) => {
+        if (!confirm("Diesen Termin wirklich löschen?")) return;
+        updateDataAndCloud(prev => ({
+          ...prev,
+          meetings: prev.meetings.filter(m => m.id !== meetingId)
+        }));
+      };
+
+      // --- ABHÄNGIGKEITS-SCHRITT UMSCHALTEN ---
+      const toggleWorkflowStep = (docId, stepIndex) => {
+        const targetDoc = (data.documents || []).find(d => d.id === docId);
+        if (!targetDoc) return;
+        const targetStep = targetDoc.workflow[stepIndex];
+        if (!targetStep) return;
+
+        const assignedPerson = getMember(targetStep.memberId);
+
+        if (!canUserToggleStep(targetStep)) {
+          alert(
+            `Berechtigung eingeschränkt:\n\nNur der Teamleiter oder die für diesen Arbeitsschritt zuständige Person (${assignedPerson.name}) darf diesen Task abhaken!\n\nDu bist aktuell oben rechts als "${currentUser.name}" (${currentUser.role}) ausgewählt.`
+          );
+          return;
+        }
+
+        if (stepIndex > 0 && !targetDoc.workflow[stepIndex - 1].done && !targetStep.done) {
+          alert(`Abhängigkeit beachten: Schritt ${stepIndex} (${getMember(targetDoc.workflow[stepIndex - 1].memberId).name}) muss zuerst abgeschlossen werden!`);
+          return;
+        }
+
+        updateDataAndCloud(prev => {
+          const docs = prev.documents.map(doc => {
+            if (doc.id !== docId) return doc;
+            const newWorkflow = [...doc.workflow];
+            const currentStep = newWorkflow[stepIndex];
+
+            const nowDone = !currentStep.done;
+            newWorkflow[stepIndex] = {
+              ...currentStep,
+              done: nowDone,
+              completedAt: nowDone ? `${new Date().toLocaleDateString("de-DE")} (durch ${currentUser.name})` : null
+            };
+
+            if (nowDone && stepIndex + 1 < newWorkflow.length) {
+              const nextStep = newWorkflow[stepIndex + 1];
+              const personA = getMember(currentStep.memberId);
+              const personB = getMember(nextStep.memberId);
+              setNotificationModal({
+                title: "Vorarbeit erledigt! Nächste Person benachrichtigen?",
+                recipient: personB,
+                message: `Hallo ${personB.name}! 👋\n${personA.name} hat gerade den Schritt "${currentStep.title}" im Beitrag "${doc.title}" (NRM) fertiggestellt.\n\nDu kannst jetzt die aktuelle Datei herunterladen und mit deinem Teil starten: "${nextStep.title}".\nAbgabetermin ist der ${doc.deadline}.`
+              });
+            }
+
+            return { ...doc, workflow: newWorkflow };
+          });
+          return { ...prev, documents: docs };
+        });
+      };
+
+      // Beim Text-Tippen 600ms Debounce nutzen, damit nicht jeder einzelne Tastenanschlag einen Netzwerk-Request auslöst
+      const updateDocContent = (content) => {
+        updateDataAndCloud(prev => ({
+          ...prev,
+          documents: prev.documents.map(d => d.id === activeDoc.id ? { ...d, content } : d)
+        }), 600);
+      };
+
+      const addWorkflowStep = (e) => {
+        e.preventDefault();
+        if (!newStepForm.title || !newStepForm.memberId) return;
+        updateDataAndCloud(prev => ({
+          ...prev,
+          documents: prev.documents.map(d => {
+            if (d.id !== activeDoc.id) return d;
+            const nextStepNum = (d.workflow || []).length + 1;
+            return {
+              ...d,
+              workflow: [...(d.workflow || []), {
+                id: "w_" + Date.now(),
+                step: nextStepNum,
+                title: newStepForm.title,
+                memberId: newStepForm.memberId,
+                done: false,
+                completedAt: null
+              }]
+            };
+          })
+        }));
+        setNewStepForm({ title: "", memberId: "" });
+      };
+
+      const addResponsibility = (e) => {
+        e.preventDefault();
+        if (!newRespForm.task || !newRespForm.memberId) return;
+        updateDataAndCloud(prev => ({
+          ...prev,
+          documents: prev.documents.map(d => {
+            if (d.id !== activeDoc.id) return d;
+            return {
+              ...d,
+              responsibilities: [...(d.responsibilities || []), { memberId: newRespForm.memberId, task: newRespForm.task }]
+            };
+          })
+        }));
+        setNewRespForm({ task: "", memberId: "" });
+      };
+
+      const addNote = (e) => {
+        e.preventDefault();
+        if (!newNoteText.trim()) return;
+        updateDataAndCloud(prev => ({
+          ...prev,
+          documents: prev.documents.map(d => {
+            if (d.id !== activeDoc.id) return d;
+            return {
+              ...d,
+              notes: [{ id: "n_" + Date.now(), author: currentUser.name || "Redaktion", text: newNoteText, time: new Date().toLocaleString("de-DE") }, ...(d.notes || [])]
+            };
+          })
+        }));
+        setNewNoteText("");
+      };
+
+      const createNewDocument = (e) => {
+        e.preventDefault();
+        if (!newDocForm.title) return;
+        const newDoc = {
+          id: "d_" + Date.now(),
+          title: newDocForm.title,
+          category: newDocForm.category,
+          deadline: newDocForm.deadline || "2026-12-01",
+          description: newDocForm.description || "Gemeinsames Redaktionsdokument",
+          responsibilities: [],
+          workflow: [],
+          files: [],
+          content: `# ${newDocForm.title}\n\nHier gemeinsam schreiben oder rechts Dateien zur Weiterbearbeitung hochladen...`,
+          notes: []
+        };
+        updateDataAndCloud(prev => ({ ...prev, documents: [...(prev.documents || []), newDoc] }));
+        setSelectedDocId(newDoc.id);
+        setNewDocModal(false);
+        setNewDocForm({ title: "", category: "Allgemein", deadline: "", description: "" });
+      };
+
+      const exportData = () => {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `NRM-Projektstand-${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+      };
+
+      const importData = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const imported = JSON.parse(event.target.result);
+            imported.documents = (imported.documents || []).map(d => ({ ...d, files: d.files || [], notes: d.notes || [], responsibilities: d.responsibilities || [], workflow: d.workflow || [] }));
+            updateDataAndCloud(imported);
+            alert("NRM-Projektstand erfolgreich geladen und in die Cloud übertragen!");
+          } catch (err) {
+            alert("Ungültige Projekt-Datei.");
+          }
+        };
+        reader.readAsText(file);
+      };
+
+      const renderCalendarGrid = () => {
+        const year = calendarMonth.getFullYear();
+        const month = calendarMonth.getMonth();
+        const firstDayOfMonth = new Date(year, month, 1);
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const startOffset = (firstDayOfMonth.getDay() + 6) % 7;
+        const allEvents = getAllCalendarEvents();
+
+        const cells = [];
+        for (let i = 0; i < startOffset; i++) {
+          cells.push(<div key={`empty_${i}`} className="h-24 rounded-xl bg-slate-50/60 border border-slate-100"></div>);
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+          const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+          const dayEvents = allEvents.filter(ev => ev.date === dateStr);
+          const isToday = new Date().toISOString().slice(0, 10) === dateStr;
+
+          cells.push(
+            <div
+              key={dateStr}
+              className={`h-24 p-1.5 rounded-xl border flex flex-col justify-between overflow-hidden transition ${
+                isToday ? "bg-orange-50 border-orange-500 ring-1 ring-orange-400" : "bg-white border-orange-100 hover:border-orange-300"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className={`text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center ${isToday ? "bg-orange-600 text-white" : "text-slate-700"}`}>
+                  {day}
+                </span>
+                {dayEvents.length > 0 && (
+                  <button
+                    onClick={() => downloadICSFile(dayEvents, `NRM-Termin-${dateStr}.ics`)}
+                    title="Termine dieses Tages in PC-Kalender exportieren (.ics)"
+                    className="text-[10px] text-orange-600 hover:text-orange-800 px-1"
+                  >
+                    <i className="fa-solid fa-calendar-plus"></i>
+                  </button>
+                )}
+              </div>
+              <div className="space-y-1 overflow-y-auto custom-scroll pr-0.5">
+                {dayEvents.map(ev => (
+                  <div
+                    key={ev.id}
+                    onClick={() => {
+                      if (ev.isDocDeadline) {
+                        setSelectedDocId(ev.docId);
+                        setActiveTab("documents");
+                      }
+                    }}
+                    title={`${ev.title} (${ev.time} Uhr) - ${ev.location}`}
+                    className={`text-[10px] px-1.5 py-0.5 rounded font-semibold truncate cursor-pointer ${
+                      ev.type === "Abgabe" || ev.isDocDeadline
+                        ? "bg-red-100 text-red-800 border border-red-200"
+                        : "bg-orange-100 text-orange-900 border border-orange-200"
+                    }`}
+                  >
+                    {ev.time} {ev.rawTitle}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        }
+        return cells;
+      };
+
+      const getRoleBadgeStyle = (role) => {
+        if (role === "Teamleiter") return "bg-amber-100 text-amber-900 border border-amber-300";
+        if (role === "MitarbeiterIn") return "bg-orange-100 text-orange-800";
+        if (role === "Support") return "bg-blue-100 text-blue-800";
+        return "bg-purple-100 text-purple-800";
+      };
+
+      const filteredDocs = selectedCategory === "Alle"
+        ? (data.documents || [])
+        : (data.documents || []).filter(d => d.category === selectedCategory);
+
+      return (
+        <div className="min-h-screen flex flex-col bg-orange-50/30">
+          {/* WARN-BANNER FALLS FIREBASE SCHREIBRECHTE BLOCKIERT SIND */}
+          {syncError && (
+            <div className="bg-red-600 text-white px-4 py-2 text-xs font-semibold flex items-center justify-between gap-4">
+              <div>
+                <i className="fa-solid fa-triangle-exclamation mr-2"></i>
+                {syncError}
+              </div>
+              <button
+                onClick={() => pushToFirestore(data)}
+                className="px-2.5 py-1 bg-white text-red-700 rounded-lg font-bold shrink-0"
+              >
+                Erneut versuchen
+              </button>
+            </div>
+          )}
+
+          {/* TOP NAVIGATION IN ORANGE */}
+          <header className="bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 text-white shadow-md sticky top-0 z-30 border-b border-orange-700/20">
+            <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-14 h-12 rounded-2xl bg-white/95 backdrop-blur px-1.5 py-1 flex items-center justify-center shadow-md border border-orange-200 shrink-0">
+                  <img
+                    src={logoSrc}
+                    alt="Die 48er Logo"
+                    className="max-h-full max-w-full object-contain drop-shadow-sm"
+                  />
+                </div>
+                <div>
+                  <h1 className="font-extrabold text-lg sm:text-xl leading-tight tracking-tight text-white drop-shadow-sm">
+                    Nachrichten- und Redaktionsmedium (NRM)
+                  </h1>
+                  <p className="text-xs text-orange-100 font-medium flex items-center gap-2">
+                    <span className={`inline-block w-2 h-2 rounded-full ${syncError ? "bg-red-300" : "bg-emerald-300 animate-pulse"}`}></span>
+                    <span>{syncStatus}</span>
+                    <button
+                      onClick={() => pushToFirestore(data)}
+                      title="Jetzt manuell in die Cloud pushen"
+                      className="underline hover:text-white ml-1"
+                    >
+                      (Jetzt synchronisieren)
+                    </button>
+                  </p>
+                </div>
+              </div>
+
+              <nav className="flex items-center gap-1 bg-orange-900/30 backdrop-blur-sm p-1 rounded-xl border border-white/15">
+                <button
+                  onClick={() => setActiveTab("documents")}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
+                    activeTab === "documents"
+                      ? "bg-white text-orange-700 shadow-sm"
+                      : "text-orange-50 hover:bg-white/10"
+                  }`}
+                >
+                  <i className="fa-solid fa-file-lines mr-1.5"></i>Dokumente & Dateien
+                </button>
+                <button
+                  onClick={() => setActiveTab("calendar")}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
+                    activeTab === "calendar"
+                      ? "bg-white text-orange-700 shadow-sm"
+                      : "text-orange-50 hover:bg-white/10"
+                  }`}
+                >
+                  <i className="fa-solid fa-calendar-days mr-1.5"></i>Kalender & Abgaben
+                </button>
+                <button
+                  onClick={() => setActiveTab("team")}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
+                    activeTab === "team"
+                      ? "bg-white text-orange-700 shadow-sm"
+                      : "text-orange-50 hover:bg-white/10"
+                  }`}
+                >
+                  <i className="fa-solid fa-users mr-1.5"></i>Team & Rollen
+                </button>
+              </nav>
+
+              {/* AKTIVE PERSON & BACKUP */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5 bg-white/95 text-slate-800 px-2.5 py-1 rounded-xl shadow-sm border border-orange-200">
+                  <i className={`fa-solid ${isCurrentUserLeader ? "fa-crown text-amber-500" : "fa-user-check text-orange-600"} text-xs`}></i>
+                  <span className="text-[11px] font-bold text-slate-500">Ich bin:</span>
+                  <select
+                    value={currentUserId}
+                    onChange={e => setCurrentUserId(e.target.value)}
+                    className="text-xs font-bold text-slate-900 bg-transparent focus:outline-none cursor-pointer"
+                    title="Wähle deinen Namen aus, um deine Arbeitsschritte (oder als Teamleiter alle Schritte) abzuhaken"
+                  >
+                    {(data.members || []).map(m => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} ({m.role})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  onClick={exportData}
+                  title="Kompletten Projektstand als Backup-Datei speichern"
+                  className="px-2.5 py-1.5 bg-orange-950/40 hover:bg-orange-950/60 text-white text-xs font-medium rounded-lg border border-white/20 flex items-center gap-1 transition"
+                >
+                  <i className="fa-solid fa-download text-amber-200"></i> Backup
+                </button>
+                <label
+                  title="Projektstand aus Backup-Datei laden"
+                  className="px-2.5 py-1.5 bg-orange-950/40 hover:bg-orange-950/60 text-white text-xs font-medium rounded-lg border border-white/20 flex items-center gap-1 cursor-pointer transition"
+                >
+                  <i className="fa-solid fa-upload text-amber-200"></i> Laden
+                  <input type="file" accept=".json" onChange={importData} className="hidden" />
+                </label>
+              </div>
+            </div>
+          </header>
+
+          {/* MAIN CONTENT */}
+          <main className="flex-1 max-w-7xl w-full mx-auto p-4">
+            {/* TAB 1: DOKUMENTE, ÜBERSICHTSBLATT & DATEI-AUSTAUSCH */}
+            {activeTab === "documents" && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* LINKE SEITENLEISTE */}
+                <div className="lg:col-span-3 space-y-4">
+                  <div className="bg-white rounded-2xl p-4 shadow-sm border border-orange-200/70">
+                    <div className="flex items-center justify-between mb-3">
+                      <h2 className="font-bold text-sm uppercase tracking-wider text-orange-700">Kategorien</h2>
+                      <button
+                        onClick={() => setNewDocModal(true)}
+                        className="bg-orange-600 hover:bg-orange-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-semibold flex items-center gap-1 shadow-sm transition"
+                      >
+                        <i className="fa-solid fa-plus"></i> Neues Dok
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                      <button
+                        onClick={() => setSelectedCategory("Alle")}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                          selectedCategory === "Alle"
+                            ? "bg-orange-600 text-white shadow-sm"
+                            : "bg-orange-50 text-slate-700 hover:bg-orange-100"
+                        }`}
+                      >
+                        Alle ({(data.documents || []).length})
+                      </button>
+                      {(data.categories || []).map(cat => (
+                        <button
+                          key={cat}
+                          onClick={() => setSelectedCategory(cat)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                            selectedCategory === cat
+                              ? "bg-orange-600 text-white shadow-sm"
+                              : "bg-orange-50 text-slate-700 hover:bg-orange-100"
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (newCategoryName && !(data.categories || []).includes(newCategoryName)) {
+                          updateDataAndCloud(prev => ({ ...prev, categories: [...(prev.categories || []), newCategoryName] }));
+                          setNewCategoryName("");
+                        }
+                      }}
+                      className="flex gap-1 mb-4"
+                    >
+                      <input
+                        type="text"
+                        placeholder="Neue Kategorie..."
+                        value={newCategoryName}
+                        onChange={e => setNewCategoryName(e.target.value)}
+                        className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      />
+                      <button type="submit" className="px-2.5 py-1.5 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-lg text-xs font-bold">+</button>
+                    </form>
+
+                    <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 mb-2">Beiträge & Dokumente</h3>
+                    <div className="space-y-2">
+                      {filteredDocs.map(doc => {
+                        const prog = getProgress(doc);
+                        const days = getDaysLeft(doc.deadline);
+                        const isSelected = activeDoc && activeDoc.id === doc.id;
+                        const fileCount = (doc.files || []).length;
+                        return (
+                          <div
+                            key={doc.id}
+                            onClick={() => setSelectedDocId(doc.id)}
+                            className={`p-3 rounded-xl border cursor-pointer transition ${
+                              isSelected
+                                ? "bg-orange-50/90 border-orange-500 shadow-sm ring-1 ring-orange-500/30"
+                                : "bg-white border-slate-200 hover:border-orange-300"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800">
+                                {doc.category}
+                              </span>
+                              <span className={`text-[11px] font-semibold ${days < 3 ? "text-red-600" : "text-slate-500"}`}>
+                                <i className="fa-regular fa-clock mr-1"></i>
+                                {doc.deadline}
+                              </span>
+                            </div>
+                            <h4 className="font-bold text-sm text-slate-800 mb-2">{doc.title}</h4>
+                            <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                              <div className="bg-orange-500 h-full transition-all" style={{ width: `${prog}%` }}></div>
+                            </div>
+                            <div className="flex justify-between items-center mt-1.5 text-[11px] text-slate-500">
+                              <span>
+                                <i className="fa-solid fa-paperclip mr-1 text-orange-600"></i>
+                                {fileCount} {fileCount === 1 ? "Datei" : "Dateien"}
+                              </span>
+                              <span className="font-bold text-orange-700">{prog}%</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* RECHTER HAUPTBEREICH */}
+                {activeDoc ? (
+                  <div className="lg:col-span-9 space-y-6">
+                    {/* DOKUMENT KOPFZEILE */}
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-orange-200/70 flex flex-wrap items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="px-2.5 py-0.5 bg-orange-100 text-orange-800 rounded-full text-xs font-semibold">
+                            {activeDoc.category}
+                          </span>
+                          <span className="text-xs text-slate-500">
+                            <i className="fa-solid fa-calendar-day mr-1 text-orange-600"></i>
+                            Abgabe: <strong>{activeDoc.deadline}</strong> ({getDaysLeft(activeDoc.deadline)} Tage übrig)
+                          </span>
+                          <button
+                            onClick={() =>
+                              downloadICSFile(
+                                [{
+                                  id: "doc_dl_" + activeDoc.id,
+                                  title: `[NRM Abgabe] ${activeDoc.title}`,
+                                  date: activeDoc.deadline,
+                                  time: "18:00",
+                                  location: activeDoc.category,
+                                  description: activeDoc.description
+                                }],
+                                `Abgabe-${activeDoc.title.replace(/[^a-zA-Z0-9]/g, "_")}.ics`
+                              )
+                            }
+                            title="Diesen Abgabetermin in deinen PC-/Smartphone-Kalender eintragen"
+                            className="text-[11px] px-2 py-0.5 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-md border border-orange-200 font-medium"
+                          >
+                            <i className="fa-regular fa-calendar-plus mr-1"></i>In PC-Kalender
+                          </button>
+                        </div>
+                        <h2 className="text-2xl font-bold text-slate-900">{activeDoc.title}</h2>
+                        <p className="text-sm text-slate-600">{activeDoc.description}</p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 bg-orange-50 p-1 rounded-xl border border-orange-200/60">
+                          <button
+                            onClick={() => setDocViewMode("sheet")}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                              docViewMode === "sheet" ? "bg-orange-600 shadow text-white" : "text-slate-600 hover:text-orange-700"
+                            }`}
+                          >
+                            <i className="fa-solid fa-clipboard-list mr-1"></i> Steckbrief
+                          </button>
+                          <button
+                            onClick={() => setDocViewMode("split")}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                              docViewMode === "split" ? "bg-orange-600 shadow text-white" : "text-slate-600 hover:text-orange-700"
+                            }`}
+                          >
+                            <i className="fa-solid fa-columns mr-1"></i> Split
+                          </button>
+                          <button
+                            onClick={() => setDocViewMode("editor")}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                              docViewMode === "editor" ? "bg-orange-600 shadow text-white" : "text-slate-600 hover:text-orange-700"
+                            }`}
+                          >
+                            <i className="fa-solid fa-folder-open mr-1"></i> Dateien & Editor
+                          </button>
+                        </div>
+
+                        <button
+                          onClick={() => setEditingDocMeta({ ...activeDoc })}
+                          title="Titel, Kategorie oder Abgabetermin bearbeiten"
+                          className="p-2 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-xl text-xs border border-orange-200/60"
+                        >
+                          <i className="fa-solid fa-pen"></i>
+                        </button>
+                        <button
+                          onClick={() => deleteDocument(activeDoc.id, activeDoc.title)}
+                          title="Dieses Dokument löschen"
+                          className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs"
+                        >
+                          <i className="fa-solid fa-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className={`grid grid-cols-1 ${docViewMode === "split" ? "xl:grid-cols-2" : ""} gap-6`}>
+                      {/* 1. ÜBERSICHTSBLATT (STECKBRIEF) */}
+                      {(docViewMode === "sheet" || docViewMode === "split") && (
+                        <div className="bg-white rounded-2xl p-5 shadow-sm border border-orange-200/70 space-y-6">
+                          <div className="flex items-center justify-between border-b border-orange-100 pb-3">
+                            <div>
+                              <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+                                <i className="fa-solid fa-id-card text-orange-600"></i>
+                                Übersichtsblatt (Dokumenten-Steckbrief)
+                              </h3>
+                              <p className="text-xs text-slate-500">
+                                Abhaken erlaubt für: <strong>Ausführende Person</strong> oder <strong>Teamleiter</strong>
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-2xl font-extrabold text-orange-600">{getProgress(activeDoc)}%</span>
+                              <span className="block text-[10px] uppercase tracking-wider text-slate-400">Gesamtfortschritt</span>
+                            </div>
+                          </div>
+
+                          {/* ABHÄNGIGKEITS-KETTE */}
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500">
+                                <i className="fa-solid fa-diagram-next mr-1.5 text-orange-600"></i>
+                                Abhängigkeiten & Reihenfolge (Person A ➔ Person B)
+                              </h4>
+                              <span className="text-[11px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-800 border border-orange-200 font-medium">
+                                Aktiv: <strong>{currentUser.name}</strong> ({currentUser.role})
+                              </span>
+                            </div>
+
+                            <div className="space-y-3">
+                              {(activeDoc.workflow || []).map((w, idx) => {
+                                const member = getMember(w.memberId);
+                                const prevDone = idx === 0 ? true : activeDoc.workflow[idx - 1].done;
+                                const isBlocked = !prevDone && !w.done;
+                                const isActive = prevDone && !w.done;
+                                const hasPermission = canUserToggleStep(w);
+
+                                return (
+                                  <div
+                                    key={w.id}
+                                    className={`p-3.5 rounded-xl border transition relative ${
+                                      w.done
+                                        ? "bg-emerald-50/50 border-emerald-200"
+                                        : isActive
+                                        ? "bg-orange-50/80 border-orange-400 shadow-sm"
+                                        : "bg-slate-50 border-slate-200 opacity-75"
+                                    }`}
+                                  >
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="flex items-start gap-3">
+                                        <button
+                                          onClick={() => toggleWorkflowStep(activeDoc.id, idx)}
+                                          title={
+                                            !hasPermission
+                                              ? `Gesperrt: Nur ${member.name} oder ein Teamleiter darf diesen Schritt abhaken`
+                                              : isBlocked
+                                              ? "Wartet noch auf Abschluss des vorherigen Schritts"
+                                              : "Klicken zum Abhaken / Status ändern"
+                                          }
+                                          className={`mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs transition shrink-0 ${
+                                            w.done
+                                              ? hasPermission
+                                                ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                                                : "bg-emerald-600/70 text-white cursor-not-allowed"
+                                              : !hasPermission || isBlocked
+                                              ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                                              : "bg-white border-2 border-orange-600 text-orange-600 hover:bg-orange-50"
+                                          }`}
+                                        >
+                                          {w.done ? (
+                                            <i className="fa-solid fa-check"></i>
+                                          ) : !hasPermission ? (
+                                            <i className="fa-solid fa-user-lock text-[10px]"></i>
+                                          ) : (
+                                            idx + 1
+                                          )}
+                                        </button>
+                                        <div>
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <span className={`font-semibold text-sm ${w.done ? "line-through text-slate-500" : "text-slate-900"}`}>
+                                              {w.title}
+                                            </span>
+                                            {w.done && (
+                                              <span className="text-[11px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-medium">
+                                                Erledigt ({w.completedAt})
+                                              </span>
+                                            )}
+                                            {isActive && (
+                                              <span className="text-[11px] bg-orange-600 text-white px-2 py-0.5 rounded-full font-medium animate-pulse">
+                                                Jetzt an der Reihe!
+                                              </span>
+                                            )}
+                                            {isBlocked && (
+                                              <span className="text-[11px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-medium">
+                                                <i className="fa-solid fa-lock mr-1"></i>
+                                                Wartet auf {getMember(activeDoc.workflow[idx - 1].memberId).name}
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                            <span className={`text-xs text-white px-2 py-0.5 rounded-md font-medium ${member.color}`}>
+                                              {member.name}
+                                            </span>
+                                            <span className={`text-[11px] px-2 py-0.5 rounded-md font-semibold ${getRoleBadgeStyle(member.role)}`}>
+                                              {member.role}
+                                            </span>
+                                            {!hasPermission && !w.done && (
+                                              <span className="text-[11px] text-slate-400 italic">
+                                                (Nur durch {member.name} oder Teamleiter abhakbar)
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <button
+                                          onClick={() =>
+                                            sendWhatsApp(
+                                              member.phone,
+                                              `Hallo ${member.name}! Kurze NRM-Erinnerung zum Beitrag "${activeDoc.title}": Dein Schritt "${w.title}" steht an (Abgabe: ${activeDoc.deadline}).`
+                                            )
+                                          }
+                                          title={`WhatsApp an ${member.name} senden`}
+                                          className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs"
+                                        >
+                                          <i className="fa-brands fa-whatsapp"></i>
+                                        </button>
+                                        <button
+                                          onClick={() =>
+                                            sendSMS(
+                                              member.phone,
+                                              `Hallo ${member.name}! NRM-Erinnerung zum Beitrag "${activeDoc.title}": Schritt "${w.title}" (Abgabe: ${activeDoc.deadline}).`
+                                            )
+                                          }
+                                          title={`SMS an ${member.name} senden`}
+                                          className="p-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs"
+                                        >
+                                          <i className="fa-solid fa-comment-sms"></i>
+                                        </button>
+                                        <button
+                                          onClick={() => setEditingStep({ ...w })}
+                                          title="Arbeitsschritt bearbeiten"
+                                          className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs"
+                                        >
+                                          <i className="fa-solid fa-pen"></i>
+                                        </button>
+                                        <button
+                                          onClick={() => deleteWorkflowStep(w.id)}
+                                          title="Schritt löschen"
+                                          className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-xs"
+                                        >
+                                          <i className="fa-solid fa-trash"></i>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            <form onSubmit={addWorkflowStep} className="mt-3 flex flex-wrap sm:flex-nowrap gap-2">
+                              <input
+                                type="text"
+                                placeholder="Nächster abhängiger Arbeitsschritt..."
+                                value={newStepForm.title}
+                                onChange={e => setNewStepForm({ ...newStepForm, title: e.target.value })}
+                                className="flex-1 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                              />
+                              <select
+                                value={newStepForm.memberId}
+                                onChange={e => setNewStepForm({ ...newStepForm, memberId: e.target.value })}
+                                className="text-xs px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                              >
+                                <option value="">Person wählen...</option>
+                                {(data.members || []).map(m => (
+                                  <option key={m.id} value={m.id}>{m.name} ({m.role})</option>
+                                ))}
+                              </select>
+                              <button type="submit" className="px-3 py-2 bg-orange-600 text-white text-xs font-semibold rounded-xl hover:bg-orange-700">
+                                + Schritt
+                              </button>
+                            </form>
+                          </div>
+
+                          {/* ZUSTÄNDIGKEITEN */}
+                          <div className="border-t border-orange-100 pt-4">
+                            <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500 mb-3">
+                              <i className="fa-solid fa-user-check mr-1.5 text-orange-600"></i>
+                              Involvierte Personen & Zuständigkeiten im Dokument
+                            </h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                              {(activeDoc.responsibilities || []).map((r, i) => {
+                                const m = getMember(r.memberId);
+                                return (
+                                  <div key={i} className="p-3 rounded-xl bg-orange-50/40 border border-orange-200/60 flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <div className={`w-8 h-8 rounded-full ${m.color} text-white flex items-center justify-center font-bold text-xs shrink-0`}>
+                                        {m.name.slice(0, 2).toUpperCase()}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-xs font-bold text-slate-800 truncate">
+                                          {m.name} <span className="font-normal text-slate-500">({m.role})</span>
+                                        </p>
+                                        <p className="text-xs text-slate-600">{r.task}</p>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => deleteResponsibility(i)}
+                                      title="Zuständigkeit entfernen"
+                                      className="text-slate-400 hover:text-red-600 text-xs p-1"
+                                    >
+                                      <i className="fa-solid fa-xmark"></i>
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            <form onSubmit={addResponsibility} className="mt-3 flex flex-wrap sm:flex-nowrap gap-2">
+                              <input
+                                type="text"
+                                placeholder="Zuständigkeit (z.B. Kapitel 4, Korrektur)..."
+                                value={newRespForm.task}
+                                onChange={e => setNewRespForm({ ...newRespForm, task: e.target.value })}
+                                className="flex-1 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                              />
+                              <select
+                                value={newRespForm.memberId}
+                                onChange={e => setNewRespForm({ ...newRespForm, memberId: e.target.value })}
+                                className="text-xs px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                              >
+                                <option value="">Person wählen...</option>
+                                {(data.members || []).map(m => (
+                                  <option key={m.id} value={m.id}>{m.name}</option>
+                                ))}
+                              </select>
+                              <button type="submit" className="px-3 py-2 bg-orange-100 hover:bg-orange-200 text-orange-900 text-xs font-semibold rounded-xl">
+                                + Zuweisen
+                              </button>
+                            </form>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 2. DATEI-AUSTAUSCH & DOKUMENTEN-EDITOR */}
+                      {(docViewMode === "editor" || docViewMode === "split") && (
+                        <div className="space-y-6">
+                          <div className="bg-white rounded-2xl p-5 shadow-sm border border-orange-200/70 space-y-4">
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-orange-100 pb-3">
+                              <div>
+                                <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+                                  <i className="fa-solid fa-cloud-arrow-up text-orange-600"></i>
+                                  Dateien & Anhänge zum Weiterbearbeiten
+                                </h3>
+                                <p className="text-xs text-slate-500">
+                                  Dateien bis 700 KB direkt hochladen oder für große Dateien Cloud-Link nutzen
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => setShowLinkForm(!showLinkForm)}
+                                className="text-xs px-2.5 py-1.5 bg-orange-50 hover:bg-orange-100 rounded-lg font-medium text-orange-800 border border-orange-200/60"
+                              >
+                                <i className="fa-solid fa-link mr-1"></i> Cloud-Link ergänzen
+                              </button>
+                            </div>
+
+                            <div className="p-3.5 rounded-xl bg-orange-50/70 border border-orange-200 space-y-2.5">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <select
+                                  value={uploadMemberId}
+                                  onChange={e => setUploadMemberId(e.target.value)}
+                                  className="text-xs px-3 py-2 rounded-lg border border-orange-200 bg-white"
+                                >
+                                  <option value="">Hochgeladen von ({currentUser.name})...</option>
+                                  {(data.members || []).map(m => (
+                                    <option key={m.id} value={m.id}>{m.name}</option>
+                                  ))}
+                                </select>
+                                <input
+                                  type="text"
+                                  placeholder="Versions-Notiz (z.B. 'Kapitel 2 ergänzt')"
+                                  value={uploadComment}
+                                  onChange={e => setUploadComment(e.target.value)}
+                                  className="text-xs px-3 py-2 rounded-lg border border-orange-200 bg-white"
+                                />
+                              </div>
+
+                              <label className="w-full py-2.5 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition shadow-sm">
+                                <i className="fa-solid fa-file-arrow-up text-sm"></i>
+                                Datei auswählen & zum Beitrag hochladen (Word, PDF, Excel, Bild...)
+                                <input type="file" onChange={handleFileUpload} className="hidden" />
+                              </label>
+                            </div>
+
+                            {showLinkForm && (
+                              <form onSubmit={handleAddExternalLink} className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                                <p className="text-xs font-bold text-slate-700">Externen Link (z.B. Google Drive, OneDrive, Dropbox) hinterlegen:</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder="Bezeichnung (z.B. Rohdaten / Video)"
+                                    value={externalLinkForm.name}
+                                    onChange={e => setExternalLinkForm({ ...externalLinkForm, name: e.target.value })}
+                                    className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200"
+                                  />
+                                  <input
+                                    type="url"
+                                    required
+                                    placeholder="https://..."
+                                    value={externalLinkForm.url}
+                                    onChange={e => setExternalLinkForm({ ...externalLinkForm, url: e.target.value })}
+                                    className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200"
+                                  />
+                                  <button type="submit" className="bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-lg px-3 py-1.5">
+                                    Link speichern
+                                  </button>
+                                </div>
+                              </form>
+                            )}
+
+                            <div className="space-y-2 max-h-60 overflow-y-auto custom-scroll">
+                              {(!activeDoc.files || activeDoc.files.length === 0) ? (
+                                <p className="text-xs text-slate-400 text-center py-3">
+                                  Noch keine Dateien zu diesem Beitrag hochgeladen.
+                                </p>
+                              ) : (
+                                activeDoc.files.map(file => (
+                                  <div key={file.id} className="p-3 rounded-xl bg-orange-50/30 border border-orange-200/70 flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <div className="w-9 h-9 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                                        <i className={`fa-solid ${file.isExternal ? "fa-up-right-from-square" : "fa-file-arrow-down"}`}></i>
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-xs font-bold text-slate-900 truncate">{file.name}</p>
+                                        <p className="text-[11px] text-slate-500">
+                                          Von <strong>{file.uploadedBy}</strong> · {file.uploadedAt}
+                                          {file.size ? ` · ${formatFileSize(file.size)}` : ""}
+                                        </p>
+                                        {file.comment && (
+                                          <p className="text-[11px] text-orange-700 font-medium mt-0.5">
+                                            💬 „{file.comment}“
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      {file.isExternal ? (
+                                        <a
+                                          href={file.dataUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1"
+                                        >
+                                          <i className="fa-solid fa-arrow-up-right-from-square"></i> Öffnen
+                                        </a>
+                                      ) : (
+                                        <a
+                                          href={file.dataUrl}
+                                          download={file.name}
+                                          className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1"
+                                        >
+                                          <i className="fa-solid fa-download"></i> Herunterladen
+                                        </a>
+                                      )}
+                                      <button
+                                        onClick={() => deleteFile(file.id)}
+                                        title="Datei löschen"
+                                        className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs"
+                                      >
+                                        <i className="fa-solid fa-trash"></i>
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+
+                          {/* DIREKTER TEXT-EDITOR & NOTIZEN */}
+                          <div className="bg-white rounded-2xl p-5 shadow-sm border border-orange-200/70 flex flex-col justify-between space-y-4">
+                            <div>
+                              <div className="flex items-center justify-between border-b border-orange-100 pb-3 mb-3">
+                                <div>
+                                  <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+                                    <i className="fa-solid fa-file-pen text-orange-600"></i>
+                                    Direkter Text-Entwurf & Redaktionsnotizen
+                                  </h3>
+                                  <p className="text-xs text-slate-500">Änderungen werden beim Tippen automatisch in der Cloud gespeichert</p>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(activeDoc.content || "");
+                                    alert("Text in die Zwischenablage kopiert!");
+                                  }}
+                                  className="text-xs px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-800 rounded-lg font-medium border border-orange-200/60"
+                                >
+                                  <i className="fa-regular fa-copy mr-1"></i> Kopieren
+                                </button>
+                              </div>
+
+                              <textarea
+                                value={activeDoc.content || ""}
+                                onChange={e => updateDocContent(e.target.value)}
+                                rows={10}
+                                className="w-full p-4 rounded-xl bg-orange-50/30 border border-orange-200/80 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                placeholder="Hier gemeinsam am Artikel oder Dokument schreiben..."
+                              />
+                            </div>
+
+                            <div className="border-t border-orange-100 pt-4">
+                              <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500 mb-2">
+                                Übergabe-Kommentare zum Dokument
+                              </h4>
+                              <div className="space-y-2 max-h-36 overflow-y-auto mb-3">
+                                {(activeDoc.notes || []).map(n => (
+                                  <div key={n.id} className="p-2.5 rounded-xl bg-orange-50/40 border border-orange-200/60 text-xs">
+                                    <div className="flex justify-between font-bold text-slate-700 mb-0.5">
+                                      <span>{n.author}</span>
+                                      <span className="text-slate-400 font-normal">{n.time}</span>
+                                    </div>
+                                    <p className="text-slate-600">{n.text}</p>
+                                  </div>
+                                ))}
+                              </div>
+                              <form onSubmit={addNote} className="flex gap-2">
+                                <input
+                                  type="text"
+                                  placeholder={`Kommentar als ${currentUser.name} hinterlassen...`}
+                                  value={newNoteText}
+                                  onChange={e => setNewNoteText(e.target.value)}
+                                  className="flex-1 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                />
+                                <button type="submit" className="px-3 py-2 bg-orange-600 text-white text-xs font-semibold rounded-xl hover:bg-orange-700">
+                                  Senden
+                                </button>
+                              </form>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="lg:col-span-9 bg-white rounded-2xl p-8 text-center">Bitte links ein Dokument auswählen oder neu anlegen.</div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 2: INTERAKTIVER KALENDER, TREFFEN & PC-KALENDER-SYNCHRONISATION */}
+            {activeTab === "calendar" && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-orange-200/70">
+                  <div className="flex flex-wrap items-center justify-between gap-4 mb-4 pb-3 border-b border-orange-100">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                        <i className="fa-solid fa-calendar-days text-orange-600"></i>
+                        Redaktionskalender & PC-Synchronisation
+                      </h2>
+                      <p className="text-xs text-slate-500">
+                        Enthält alle Gruppentreffen, Redaktionsschlüsse und Dokumenten-Abgabetermine
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-1 bg-orange-50 p-1 rounded-xl border border-orange-200">
+                        <button
+                          onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}
+                          className="px-2.5 py-1 hover:bg-white rounded-lg text-xs font-bold text-orange-800"
+                        >
+                          <i className="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <span className="px-3 text-xs font-bold text-slate-800 min-w-[130px] text-center">
+                          {calendarMonth.toLocaleDateString("de-DE", { month: "long", year: "numeric" })}
+                        </span>
+                        <button
+                          onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}
+                          className="px-2.5 py-1 hover:bg-white rounded-lg text-xs font-bold text-orange-800"
+                        >
+                          <i className="fa-solid fa-chevron-right"></i>
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => downloadICSFile(getAllCalendarEvents(), "NRM-Gesamtkalender.ics")}
+                        className="px-3.5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition"
+                      >
+                        <i className="fa-solid fa-rotate"></i>
+                        Alle Termine mit PC-Kalender synchronisieren (.ics)
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-2 mb-2 text-center text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    <div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div>Sa</div><div>So</div>
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-2">
+                    {renderCalendarGrid()}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-orange-200/70">
+                    <h3 className="text-lg font-bold mb-1">Terminliste: Sitzungen & Abgabetermine</h3>
+                    <p className="text-xs text-slate-500 mb-4">
+                      Jeder Termin kann einzeln in den PC-Kalender (Outlook, Apple, Windows, Google) übernommen oder per WhatsApp/SMS erinnert werden
+                    </p>
+
+                    <div className="space-y-3">
+                      {(data.meetings || []).map(m => (
+                        <div key={m.id} className="p-4 rounded-xl border border-orange-200/70 flex flex-wrap items-center justify-between gap-4 bg-orange-50/30">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center font-bold text-white shadow-sm ${m.type === "Abgabe" ? "bg-red-600" : "bg-orange-600"}`}>
+                              <i className={`fa-solid ${m.type === "Abgabe" ? "fa-flag-checkered" : "fa-handshake"}`}></i>
+                            </div>
+                            <div>
+                              <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${m.type === "Abgabe" ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-800"}`}>
+                                {m.type}
+                              </span>
+                              <h4 className="font-bold text-slate-900">{m.title}</h4>
+                              <p className="text-xs text-slate-600">
+                                <i className="fa-regular fa-calendar mr-1 text-orange-600"></i> {m.date} um {m.time} Uhr · <i className="fa-solid fa-location-dot ml-1 mr-1 text-orange-600"></i> {m.location}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <button
+                              onClick={() =>
+                                downloadICSFile(
+                                  [{
+                                    id: m.id,
+                                    title: `[NRM ${m.type}] ${m.title}`,
+                                    date: m.date,
+                                    time: m.time,
+                                    location: m.location,
+                                    description: `Termin aus dem Nachrichten- und Redaktionsmedium (NRM)`
+                                  }],
+                                  `NRM-${m.title.replace(/[^a-zA-Z0-9]/g, "_")}.ics`
+                                )
+                              }
+                              title="Diesen Termin in den PC-Kalender (Outlook / Windows / Apple) eintragen"
+                              className="px-2.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold flex items-center gap-1"
+                            >
+                              <i className="fa-regular fa-calendar-plus"></i> PC-Kalender
+                            </button>
+                            <button
+                              onClick={() =>
+                                sendWhatsApp(
+                                  "",
+                                  `📅 *NRM-Erinnerung (${m.type})*: "${m.title}"\n🕒 Wann: ${m.date} um ${m.time} Uhr\n📍 Wo: ${m.location}\nBitte pünktlich sein / rechtzeitig eintragen!`
+                                )
+                              }
+                              className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1"
+                            >
+                              <i className="fa-brands fa-whatsapp text-sm"></i> WhatsApp
+                            </button>
+                            <button
+                              onClick={() =>
+                                sendSMS(
+                                  (data.members || []).map(mem => mem.phone).join(","),
+                                  `NRM-Erinnerung (${m.type}): "${m.title}" am ${m.date} um ${m.time} Uhr (${m.location}).`
+                                )
+                              }
+                              className="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1"
+                            >
+                              <i className="fa-solid fa-comment-sms text-sm"></i> SMS
+                            </button>
+                            <button
+                              onClick={() => setEditingMeeting({ ...m })}
+                              title="Termin bearbeiten"
+                              className="p-2 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-xl text-xs"
+                            >
+                              <i className="fa-solid fa-pen"></i>
+                            </button>
+                            <button
+                              onClick={() => deleteMeeting(m.id)}
+                              title="Termin löschen"
+                              className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl text-xs"
+                            >
+                              <i className="fa-solid fa-trash"></i>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-orange-200/70 h-fit">
+                    <h3 className="font-bold text-lg mb-3">Neuen Termin eintragen</h3>
+                    <form
+                      onSubmit={e => {
+                        e.preventDefault();
+                        if (!newMeetingForm.title || !newMeetingForm.date) return;
+                        const created = { ...newMeetingForm, id: "mt_" + Date.now() };
+                        updateDataAndCloud(prev => ({
+                          ...prev,
+                          meetings: [...(prev.meetings || []), created]
+                        }));
+                        setNewMeetingForm({ title: "", date: "", time: "17:00", location: "", type: "Treffen" });
+                      }}
+                      className="space-y-3"
+                    >
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600">Art des Termins</label>
+                        <select
+                          value={newMeetingForm.type}
+                          onChange={e => setNewMeetingForm({ ...newMeetingForm, type: e.target.value })}
+                          className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white"
+                        >
+                          <option value="Treffen">Redaktionssitzung / Treffen</option>
+                          <option value="Abgabe">Redaktionsschluss / Abgabe</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600">Titel</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="z.B. Redaktionskonferenz"
+                          value={newMeetingForm.title}
+                          onChange={e => setNewMeetingForm({ ...newMeetingForm, title: e.target.value })}
+                          className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600">Datum</label>
+                          <input
+                            type="date"
+                            required
+                            value={newMeetingForm.date}
+                            onChange={e => setNewMeetingForm({ ...newMeetingForm, date: e.target.value })}
+                            className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600">Uhrzeit</label>
+                          <input
+                            type="time"
+                            value={newMeetingForm.time}
+                            onChange={e => setNewMeetingForm({ ...newMeetingForm, time: e.target.value })}
+                            className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600">Ort / Link</label>
+                        <input
+                          type="text"
+                          placeholder="z.B. Zoom-Link oder Büro"
+                          value={newMeetingForm.location}
+                          onChange={e => setNewMeetingForm({ ...newMeetingForm, location: e.target.value })}
+                          className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                        />
+                      </div>
+                      <button type="submit" className="w-full py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-xl text-sm shadow-sm transition">
+                        Termin speichern
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: TEAMMITGLIEDER, ROLLEN-DROPDOWN & KONTAKTE */}
+            {activeTab === "team" && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-orange-200/70">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <div>
+                      <h2 className="text-xl font-bold">Redaktionsteam & Kontakte</h2>
+                      <p className="text-xs text-slate-500">
+                        Rollen steuern die Berechtigungen: <strong>Teamleiter</strong> sowie die jeweils zugewiesene Person dürfen Arbeitsschritte abhaken.
+                      </p>
+                    </div>
+                    {(data.members || []).length > 0 && (
+                      <button
+                        onClick={() => {
+                          if (confirm("Möchtest du wirklich ALLE Kontakte auf einmal löschen?")) {
+                            updateDataAndCloud(prev => ({ ...prev, members: [] }));
+                          }
+                        }}
+                        className="text-xs px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium"
+                      >
+                        <i className="fa-solid fa-trash-can mr-1"></i> Alle Kontakte leeren
+                      </button>
+                    )}
+                  </div>
+
+                  {(data.members || []).length === 0 ? (
+                    <div className="p-8 text-center text-slate-500 text-sm border border-dashed rounded-xl">
+                      Noch keine Teammitglieder eingetragen. Füge rechts deine Kolleginnen und Kollegen hinzu!
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {(data.members || []).map(m => (
+                        <div key={m.id} className="p-4 rounded-xl border border-orange-200/70 flex items-center justify-between bg-orange-50/30">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`w-10 h-10 rounded-full ${m.color} text-white flex items-center justify-center font-bold shrink-0 shadow-sm`}>
+                              {m.name.slice(0, 2).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <h3 className="font-bold text-slate-900 text-sm truncate">{m.name}</h3>
+                                {m.role === "Teamleiter" && (
+                                  <i className="fa-solid fa-crown text-amber-500 text-xs" title="Teamleiter (darf alle Schritte freigeben)"></i>
+                                )}
+                              </div>
+                              <span className={`inline-block text-[11px] px-2 py-0.5 rounded-md font-semibold mt-0.5 ${getRoleBadgeStyle(m.role)}`}>
+                                {m.role}
+                              </span>
+                              <p className="text-xs font-mono text-slate-600 mt-1">{m.phone}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <button
+                              onClick={() => sendWhatsApp(m.phone, `Hallo ${m.name}! 👋`)}
+                              title="WhatsApp senden"
+                              className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs"
+                            >
+                              <i className="fa-brands fa-whatsapp"></i>
+                            </button>
+                            <button
+                              onClick={() => sendSMS(m.phone, `Hallo ${m.name}!`)}
+                              title="SMS senden"
+                              className="p-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs"
+                            >
+                              <i className="fa-solid fa-comment-sms"></i>
+                            </button>
+                            <button
+                              onClick={() => openEditMemberModal(m)}
+                              title={`${m.name} bearbeiten`}
+                              className="p-2 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-lg text-xs"
+                            >
+                              <i className="fa-solid fa-pen"></i>
+                            </button>
+                            <button
+                              onClick={() => deleteMember(m.id, m.name)}
+                              title={`${m.name} löschen`}
+                              className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg text-xs"
+                            >
+                              <i className="fa-solid fa-trash"></i>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* PERSON HINZUFÜGEN MIT ROLLEN-DROPDOWN */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-orange-200/70 h-fit">
+                  <h3 className="font-bold text-lg mb-3">Person hinzufügen</h3>
+                  <form
+                    onSubmit={e => {
+                      e.preventDefault();
+                      if (!newMemberForm.name) return;
+                      const finalRole = newMemberForm.roleType === "andere"
+                        ? (newMemberForm.customRole.trim() || "Andere")
+                        : newMemberForm.roleType;
+
+                      const colors = ["bg-orange-600", "bg-amber-600", "bg-red-600", "bg-blue-600", "bg-emerald-600", "bg-purple-600"];
+                      const newId = "m_" + Date.now();
+                      updateDataAndCloud(prev => ({
+                        ...prev,
+                        members: [
+                          ...(prev.members || []),
+                          {
+                            id: newId,
+                            name: newMemberForm.name,
+                            role: finalRole,
+                            phone: newMemberForm.phone || "+43664...",
+                            color: colors[(prev.members || []).length % colors.length]
+                          }
+                        ]
+                      }));
+                      setNewMemberForm({ name: "", roleType: "MitarbeiterIn", customRole: "", phone: "" });
+                    }}
+                    className="space-y-3"
+                  >
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600">Name</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Name (z.B. Lisa M.)"
+                        value={newMemberForm.name}
+                        onChange={e => setNewMemberForm({ ...newMemberForm, name: e.target.value })}
+                        className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600">Rolle auswählen</label>
+                      <select
+                        value={newMemberForm.roleType}
+                        onChange={e => setNewMemberForm({ ...newMemberForm, roleType: e.target.value })}
+                        className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white"
+                      >
+                        <option value="Teamleiter">Teamleiter</option>
+                        <option value="MitarbeiterIn">MitarbeiterIn</option>
+                        <option value="Support">Support</option>
+                        <option value="andere">andere (frei eingeben...)</option>
+                      </select>
+                    </div>
+
+                    {newMemberForm.roleType === "andere" && (
+                      <div>
+                        <label className="text-xs font-semibold text-orange-700">Eigene Rolle / Bezeichnung eingeben</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Beliebige Rolle hinschreiben (z.B. Fotografie, Gastautor)..."
+                          value={newMemberForm.customRole}
+                          onChange={e => setNewMemberForm({ ...newMemberForm, customRole: e.target.value })}
+                          className="w-full mt-1 px-3 py-2 rounded-xl border border-orange-300 bg-orange-50/40 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600">Telefonnummer (für WhatsApp & SMS)</label>
+                      <input
+                        type="text"
+                        placeholder="Telefonnummer (+43...)"
+                        value={newMemberForm.phone}
+                        onChange={e => setNewMemberForm({ ...newMemberForm, phone: e.target.value })}
+                        className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                      />
+                    </div>
+
+                    <button type="submit" className="w-full py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-xl text-sm shadow-sm transition">
+                      Mitglied speichern
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
+          </main>
+
+          {/* MODAL: GRUPPENMITGLIED BEARBEITEN */}
+          {editingMember && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+              <form onSubmit={saveEditedMember} className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+                <h3 className="font-bold text-lg">Kontakt & Rolle bearbeiten</h3>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingMember.name}
+                    onChange={e => setEditingMember({ ...editingMember, name: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Rolle</label>
+                  <select
+                    value={editingMember.roleType}
+                    onChange={e => setEditingMember({ ...editingMember, roleType: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white"
+                  >
+                    <option value="Teamleiter">Teamleiter</option>
+                    <option value="MitarbeiterIn">MitarbeiterIn</option>
+                    <option value="Support">Support</option>
+                    <option value="andere">andere (frei eingeben...)</option>
+                  </select>
+                </div>
+                {editingMember.roleType === "andere" && (
+                  <div>
+                    <label className="text-xs font-semibold text-orange-700">Eigene Rolle / Bezeichnung</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Rolle frei eingeben..."
+                      value={editingMember.customRole}
+                      onChange={e => setEditingMember({ ...editingMember, customRole: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 rounded-xl border border-orange-300 bg-orange-50/40 text-sm"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Telefonnummer (für WhatsApp & SMS)</label>
+                  <input
+                    type="text"
+                    value={editingMember.phone}
+                    onChange={e => setEditingMember({ ...editingMember, phone: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div className="flex gap-2 justify-end pt-2">
+                  <button type="button" onClick={() => setEditingMember(null)} className="px-4 py-2 text-xs text-slate-600">Abbrechen</button>
+                  <button type="submit" className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-xl">Änderungen speichern</button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* MODAL: DOKUMENT-STECKBRIEF BEARBEITEN */}
+          {editingDocMeta && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+              <form onSubmit={saveEditedDocMeta} className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+                <h3 className="font-bold text-lg">Dokument-Steckbrief bearbeiten</h3>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Titel</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingDocMeta.title}
+                    onChange={e => setEditingDocMeta({ ...editingDocMeta, title: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600">Kategorie</label>
+                    <select
+                      value={editingDocMeta.category}
+                      onChange={e => setEditingDocMeta({ ...editingDocMeta, category: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white"
+                    >
+                      {(data.categories || []).map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600">Abgabetermin</label>
+                    <input
+                      type="date"
+                      value={editingDocMeta.deadline}
+                      onChange={e => setEditingDocMeta({ ...editingDocMeta, deadline: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Kurzbeschreibung</label>
+                  <input
+                    type="text"
+                    value={editingDocMeta.description}
+                    onChange={e => setEditingDocMeta({ ...editingDocMeta, description: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div className="flex gap-2 justify-end pt-2">
+                  <button type="button" onClick={() => setEditingDocMeta(null)} className="px-4 py-2 text-xs text-slate-600">Abbrechen</button>
+                  <button type="submit" className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-xl">Speichern</button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* MODAL: ABHÄNGIGKEITS-SCHRITT BEARBEITEN */}
+          {editingStep && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+              <form onSubmit={saveEditedStep} className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+                <h3 className="font-bold text-lg">Arbeitsschritt bearbeiten</h3>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Beschreibung des Schritts</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingStep.title}
+                    onChange={e => setEditingStep({ ...editingStep, title: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Zuständige Person</label>
+                  <select
+                    value={editingStep.memberId}
+                    onChange={e => setEditingStep({ ...editingStep, memberId: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white"
+                  >
+                    {(data.members || []).map(m => <option key={m.id} value={m.id}>{m.name} ({m.role})</option>)}
+                  </select>
+                </div>
+                <div className="flex gap-2 justify-end pt-2">
+                  <button type="button" onClick={() => setEditingStep(null)} className="px-4 py-2 text-xs text-slate-600">Abbrechen</button>
+                  <button type="submit" className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-xl">Speichern</button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* MODAL: TERMIN BEARBEITEN */}
+          {editingMeeting && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+              <form onSubmit={saveEditedMeeting} className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+                <h3 className="font-bold text-lg">Termin bearbeiten</h3>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Art</label>
+                  <select
+                    value={editingMeeting.type}
+                    onChange={e => setEditingMeeting({ ...editingMeeting, type: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white"
+                  >
+                    <option value="Treffen">Redaktionssitzung / Treffen</option>
+                    <option value="Abgabe">Redaktionsschluss / Abgabe</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Titel</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingMeeting.title}
+                    onChange={e => setEditingMeeting({ ...editingMeeting, title: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600">Datum</label>
+                    <input
+                      type="date"
+                      value={editingMeeting.date}
+                      onChange={e => setEditingMeeting({ ...editingMeeting, date: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600">Uhrzeit</label>
+                    <input
+                      type="time"
+                      value={editingMeeting.time}
+                      onChange={e => setEditingMeeting({ ...editingMeeting, time: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Ort / Link</label>
+                  <input
+                    type="text"
+                    value={editingMeeting.location}
+                    onChange={e => setEditingMeeting({ ...editingMeeting, location: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div className="flex gap-2 justify-end pt-2">
+                  <button type="button" onClick={() => setEditingMeeting(null)} className="px-4 py-2 text-xs text-slate-600">Abbrechen</button>
+                  <button type="submit" className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-xl">Speichern</button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* MODAL: BENACHRICHTIGUNG BEI ABHÄNGIGKEIT */}
+          {notificationModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+                <div className="flex items-center gap-3 text-orange-600">
+                  <i className="fa-solid fa-bell text-2xl"></i>
+                  <h3 className="font-bold text-lg text-slate-900">{notificationModal.title}</h3>
+                </div>
+                <p className="text-xs text-slate-600">
+                  Da der Schritt erledigt wurde, ist jetzt <strong>{notificationModal.recipient.name}</strong> an der Reihe. Möchtest du direkt eine Benachrichtigung senden?
+                </p>
+                <div className="p-3 bg-orange-50/70 border border-orange-200 rounded-xl text-xs font-mono text-slate-700 whitespace-pre-wrap">
+                  {notificationModal.message}
+                </div>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      sendWhatsApp(notificationModal.recipient.phone, notificationModal.message);
+                      setNotificationModal(null);
+                    }}
+                    className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <i className="fa-brands fa-whatsapp text-base"></i> Per WhatsApp senden
+                  </button>
+                  <button
+                    onClick={() => {
+                      sendSMS(notificationModal.recipient.phone, notificationModal.message);
+                      setNotificationModal(null);
+                    }}
+                    className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <i className="fa-solid fa-comment-sms text-base"></i> Per SMS senden
+                  </button>
+                  <button
+                    onClick={() => setNotificationModal(null)}
+                    className="w-full py-2 text-xs text-slate-500 hover:text-slate-700"
+                  >
+                    Später erinnern
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL: NEUES DOKUMENT */}
+          {newDocModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+              <form onSubmit={createNewDocument} className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+                <h3 className="font-bold text-lg">Neues Dokument mit Übersichtsblatt</h3>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Dokumenten-Titel</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="z.B. Redaktionsbeitrag & Interview"
+                    value={newDocForm.title}
+                    onChange={e => setNewDocForm({ ...newDocForm, title: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600">Kategorie</label>
+                    <select
+                      value={newDocForm.category}
+                      onChange={e => setNewDocForm({ ...newDocForm, category: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white"
+                    >
+                      {(data.categories || []).map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600">Abgabetermin</label>
+                    <input
+                      type="date"
+                      value={newDocForm.deadline}
+                      onChange={e => setNewDocForm({ ...newDocForm, deadline: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Kurzbeschreibung</label>
+                  <input
+                    type="text"
+                    placeholder="Worum geht es in diesem Beitrag?"
+                    value={newDocForm.description}
+                    onChange={e => setNewDocForm({ ...newDocForm, description: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div className="flex gap-2 justify-end pt-2">
+                  <button type="button" onClick={() => setNewDocModal(false)} className="px-4 py-2 text-xs text-slate-600">Abbrechen</button>
+                  <button type="submit" className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-xl">Anlegen</button>
+                </div>
+              </form>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
