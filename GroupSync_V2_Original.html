@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GroupSync 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ===== Farben & Grundwerte (hier könnt ihr das Design leicht ändern) ===== */
+  :root {
+    --bg: #f5f4f0; --surface: #ffffff; --surface-2: #f0eee8; --border: #e4e1d9;
+    --text: #1e1b2e; --muted: #6b6880;
+    --primary: #5b4cdb; --primary-soft: #ece9fd; --on-primary: #ffffff;
+    --ok: #1f9d6b; --ok-soft: #e1f5ec;
+    --warn: #b56d00; --warn-soft: #fdf1dc;
+    --danger: #d64545; --danger-soft: #fde6e6;
+    --wa: #25a85a;
+    --radius: 16px;
+    --shadow: 0 1px 2px rgba(30,27,46,.05), 0 4px 16px rgba(30,27,46,.05);
+  }
+  /* Dunkelmodus, wenn das Gerät auf "dunkel" eingestellt ist */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14131b; --surface: #1d1c27; --surface-2: #262533; --border: #33313f;
+      --text: #ecebf3; --muted: #9a98ad; --primary: #8b7ff0; --primary-soft: #2b2750;
+      --ok-soft: #173528; --warn: #f0b04a; --warn-soft: #3a2c12; --danger-soft: #3d1d1d; --shadow: none;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.5; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  h1 { font-size: 26px; margin: 0; font-weight: 800; letter-spacing: -.02em; }
+  h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; }
+  p { margin: 0; }
+
+  /* ===== Layout ===== */
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 24px 14px; display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; height: 100vh; }
+  .brand { display: flex; gap: 10px; align-items: center; padding: 0 8px 22px; }
+  .logo { width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(135deg, var(--primary), #e0663f); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 18px; }
+  .brand small { display: block; color: var(--muted); font-size: 12px; }
+  .nav-btn { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; border: none; background: none; cursor: pointer; text-align: left; font-weight: 600; color: var(--muted); }
+  .nav-btn:hover { background: var(--surface-2); }
+  .nav-btn.active { background: var(--primary-soft); color: var(--primary); }
+  .side-extra { margin-top: auto; display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
+  .label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; margin: 0 0 4px 12px; }
+  .main { padding: 28px 32px 100px; max-width: 1200px; width: 100%; }
+  .topbar { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+
+  /* ===== Bausteine ===== */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+  .grid { display: grid; gap: 16px; }
+  .g-4 { grid-template-columns: repeat(4, 1fr); }
+  .g-2 { grid-template-columns: 1fr 1fr; align-items: start; }
+  .docs { grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); }
+  .stack { display: flex; flex-direction: column; gap: 16px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .between { justify-content: space-between; }
+  .grow { flex: 1; min-width: 0; }
+  .mt { margin-top: 16px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  .strong { font-weight: 700; }
+  .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .empty { color: var(--muted); text-align: center; padding: 16px; font-size: 14px; }
+  .clickable { cursor: pointer; }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 600; font-size: 14px; white-space: nowrap; }
+  .btn:hover { border-color: var(--primary); }
+  .btn.primary { background: var(--primary); color: var(--on-primary); border-color: transparent; }
+  .btn.wa { background: var(--wa); color: #fff; border-color: transparent; }
+  .btn.ghost { border-color: transparent; background: transparent; }
+  .btn.small { padding: 6px 10px; font-size: 13px; }
+  .btn.danger-text { color: var(--danger); }
+  .btn.full { width: 100%; justify-content: center; margin-top: 8px; }
+  .icon-btn { border: none; background: transparent; cursor: pointer; padding: 6px 8px; border-radius: 8px; font-size: 15px; }
+  .icon-btn:hover { background: var(--surface-2); }
+
+  .field { width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); }
+  .field:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--surface-2); color: var(--muted); }
+  .badge.primary { background: var(--primary-soft); color: var(--primary); }
+  .badge.ok { background: var(--ok-soft); color: var(--ok); }
+  .badge.warn { background: var(--warn-soft); color: var(--warn); }
+  .badge.danger { background: var(--danger-soft); color: var(--danger); }
+
+  .avatar { width: 30px; height: 30px; border-radius: 50%; color: #fff; display: inline-grid; place-items: center; font-weight: 700; font-size: 11px; flex-shrink: 0; }
+  .avatar.lg { width: 44px; height: 44px; font-size: 15px; }
+  .avatars { display: flex; }
+  .avatars .avatar { margin-left: -6px; border: 2px solid var(--surface); }
+  .avatars .avatar:first-child { margin-left: 0; }
+
+  .progress { height: 8px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+  .progress > span { display: block; height: 100%; background: var(--primary); border-radius: 99px; }
+  .ring { width: 96px; height: 96px; border-radius: 50%; background: conic-gradient(var(--primary) calc(var(--p) * 1%), var(--surface-2) 0); display: grid; place-items: center; flex-shrink: 0; }
+  .ring span { width: 74px; height: 74px; border-radius: 50%; background: var(--surface); display: grid; place-items: center; font-weight: 800; font-size: 20px; }
+
+  .list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .list-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+  .list-item.clickable:hover { outline: 1px solid var(--primary); }
+
+  /* Statistik-Kacheln */
+  .stat .num { font-size: 26px; font-weight: 800; letter-spacing: -.02em; margin: 2px 0; }
+  .alert { margin-top: 16px; background: var(--warn-soft); border-color: transparent; font-size: 14px; }
+  .alert a { color: inherit; font-weight: 700; }
+  .hint { background: var(--primary-soft); border-color: transparent; font-size: 14px; }
+
+  /* Dokumente */
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .chip { border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 6px 14px; cursor: pointer; font-weight: 600; font-size: 13px; }
+  .chip span { color: var(--muted); margin-left: 4px; }
+  .chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .chip.active span { color: inherit; opacity: .7; }
+  .doc-card { display: flex; flex-direction: column; gap: 10px; transition: transform .15s, border-color .15s; }
+  .doc-card:hover { transform: translateY(-2px); border-color: var(--primary); }
+  .doc-card h3 { font-size: 17px; margin: 0; }
+  .doc-head { display: flex; gap: 20px; align-items: center; }
+  .doc-head h1 { margin: 8px 0 2px; }
+  .doc-head .row:last-child { margin-top: 12px; }
+  .back { margin-bottom: 12px; }
+
+  /* Ablauf-Kette (Person A ➔ Person B) */
+  .chain { margin-top: 14px; }
+  .step { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 12px; border: 1px solid var(--border); }
+  .step .title { font-weight: 600; margin-bottom: 4px; }
+  .step.active { border-color: var(--primary); background: var(--primary-soft); }
+  .step.done .title { text-decoration: line-through; color: var(--muted); }
+  .step.blocked { opacity: .65; }
+  .check { width: 30px; height: 30px; border-radius: 9px; border: 2px solid var(--border); background: var(--surface); cursor: pointer; flex-shrink: 0; font-weight: 800; }
+  .step.done .check { background: var(--ok); border-color: var(--ok); color: #fff; }
+  .step.active .check { border-color: var(--primary); color: var(--primary); }
+  .step.blocked .check { cursor: not-allowed; }
+  .connector { width: 2px; height: 14px; background: var(--border); margin-left: 26px; }
+  .inline-form { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .inline-form input { flex: 1; min-width: 150px; }
+  .inline-form select { width: auto; }
+
+  .editor { min-height: 340px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13.5px; resize: vertical; margin: 12px 0 6px; }
+  .preview { margin-top: 12px; padding: 16px; background: var(--surface-2); border-radius: 12px; min-height: 200px; }
+  .preview h2, .preview h3, .preview h4 { margin: 10px 0 4px; }
+  .preview p { margin: 4px 0; }
+  .preview li { margin-left: 20px; }
+  .note { padding: 10px 12px; border-radius: 12px; background: var(--surface-2); font-size: 14px; }
+
+  /* Termine */
+  .datebox { width: 48px; text-align: center; border-radius: 10px; background: var(--primary-soft); color: var(--primary); padding: 5px 0; flex-shrink: 0; line-height: 1.1; }
+  .datebox b { display: block; font-size: 18px; }
+  .datebox span { font-size: 11px; text-transform: uppercase; font-weight: 700; }
+  .cal-item { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; padding: 16px; }
+  .actions { justify-content: flex-end; }
+  .past { opacity: .6; }
+  .member { display: flex; flex-direction: column; gap: 10px; }
+
+  /* Ich-bin-Auswahl */
+  .me { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .me select { width: auto; }
+
+  /* Fenster (Modal) & Hinweis (Toast) */
+  .modal-bg { position: fixed; inset: 0; background: rgba(10,10,20,.45); display: grid; place-items: center; padding: 16px; z-index: 50; }
+  .modal { max-width: 460px; width: 100%; max-height: 90vh; overflow: auto; }
+  .modal h3 { font-size: 18px; }
+  .modal form { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+  .modal label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .msg { white-space: pre-wrap; background: var(--surface-2); padding: 12px; border-radius: 12px; font-size: 14px; margin: 12px 0; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 60; font-size: 14px; max-width: 90vw; }
+  .toast.show { opacity: 1; }
+
+  /* ===== Handy & Tablet ===== */
+  @media (max-width: 900px) {
+    .g-4 { grid-template-columns: 1fr 1fr; }
+    .g-2 { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 760px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { position: fixed; top: auto; bottom: 0; left: 0; right: 0; height: auto; flex-direction: row; justify-content: space-around; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); border-right: none; border-top: 1px solid var(--border); z-index: 40; }
+    .brand, .side-extra { display: none; }
+    .nav-btn { flex-direction: column; gap: 2px; font-size: 11px; padding: 6px 10px; }
+    .main { padding: 20px 16px 110px; }
+    h1 { font-size: 22px; }
+    .doc-head { flex-direction: column-reverse; align-items: flex-start; }
+    .cal-item .actions { justify-content: flex-start; width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="toast" class="toast"></div>
+
+<script>
+/* =====================================================================
+   GroupSync – Version 2
+   Alles läuft in dieser einen Datei, ohne Server und ohne Kosten.
+   Daten werden nur im Browser gespeichert (localStorage).
+   ===================================================================== */
+
+const STORE_KEY = "groupsync_v2";
+const ME_KEY = "groupsync_v2_me";
+const COLORS = ["#5b4cdb", "#e0663f", "#1f9d6b", "#c2417f", "#2f7fd1", "#b8860b"];
+
+/* ---------- Beispieldaten (alle Namen und Nummern sind erfunden) ---------- */
+function sampleData() {
+  return {
+    categories: ["Allgemein", "Recherche & Daten", "Ausarbeitung", "Präsentation", "Organisation"],
+    members: [
+      { id: "m1", name: "Anna M.",  role: "Projektleitung & Struktur", phone: "+430000000001", color: COLORS[0] },
+      { id: "m2", name: "Lukas K.", role: "Datenanalyse & Tabellen",   phone: "+430000000002", color: COLORS[1] },
+      { id: "m3", name: "Sarah W.", role: "Redaktion & Korrektur",     phone: "+430000000003", color: COLORS[2] },
+      { id: "m4", name: "Max B.",   role: "Layout & Grafiken",         phone: "+430000000004", color: COLORS[3] }
+    ],
+    meetings: [
+      { id: "mt1", title: "Kick-off & Aufgabenverteilung", date: "2026-10-28", time: "17:00", location: "Online", type: "Treffen" },
+      { id: "mt2", title: "Zwischenstand-Besprechung",     date: "2026-11-12", time: "18:30", location: "Seminarraum 3", type: "Treffen" },
+      { id: "mt3", title: "Testrunde mit Außenstehenden",  date: "2026-11-18", time: "16:00", location: "Bibliothek", type: "Treffen" },
+      { id: "mt4", title: "Finale Abgabe",                 date: "2026-11-25", time: "23:59", location: "Upload-Portal", type: "Abgabe" }
+    ],
+    documents: [
+      {
+        id: "d1", title: "Hauptbericht", category: "Ausarbeitung", deadline: "2026-11-20",
+        description: "Gemeinsamer Bericht mit Einleitung, Auswertung und Fazit.",
+        responsibilities: [
+          { memberId: "m1", task: "Kapitel 1: Einleitung" },
+          { memberId: "m2", task: "Kapitel 2: Auswertung" },
+          { memberId: "m3", task: "Kapitel 3: Fazit & Korrektur" },
+          { memberId: "m4", task: "Grafiken & Layout" }
+        ],
+        workflow: [
+          { id: "w1", title: "Grundstruktur & Einleitung anlegen", memberId: "m1", done: true, doneAt: "30.10.2026" },
+          { id: "w2", title: "Daten & Tabellen einfügen",          memberId: "m2", done: false, doneAt: null },
+          { id: "w3", title: "Text ausformulieren & korrigieren",  memberId: "m3", done: false, doneAt: null },
+          { id: "w4", title: "Layout & PDF-Export",                memberId: "m4", done: false, doneAt: null }
+        ],
+        content: "# Hauptbericht\n\n## 1. Einleitung\nDie Grundstruktur steht. Hier beschreiben wir das Ziel unserer Arbeit.\n\n## 2. Auswertung\n- Tabelle 1 folgt\n- Grafik folgt\n\n## 3. Fazit\n**Folgt nach der Auswertung.**",
+        notes: [{ id: "n1", author: "Anna M.", text: "Einleitung ist fertig – Lukas, du kannst starten!", time: "30.10.2026, 14:20" }]
+      },
+      {
+        id: "d2", title: "Quellenverzeichnis", category: "Recherche & Daten", deadline: "2026-11-06",
+        description: "Alle Quellen gesammelt und einheitlich zitiert.",
+        responsibilities: [
+          { memberId: "m1", task: "Literatur sammeln" },
+          { memberId: "m3", task: "Zitierweise prüfen" }
+        ],
+        workflow: [
+          { id: "w5", title: "Literaturliste zusammentragen", memberId: "m1", done: true, doneAt: "27.10.2026" },
+          { id: "w6", title: "Zitierweise prüfen",           memberId: "m3", done: false, doneAt: null }
+        ],
+        content: "# Quellenverzeichnis\n\n- Beispielquelle A (2024)\n- Beispielquelle B (2025)",
+        notes: []
+      },
+      {
+        id: "d3", title: "Präsentation & Demo", category: "Präsentation", deadline: "2026-11-24",
+        description: "Folien für die 5-Minuten-Demo in der Lehrveranstaltung.",
+        responsibilities: [{ memberId: "m4", task: "Foliendesign" }, { memberId: "m2", task: "Live-Demo" }],
+        workflow: [
+          { id: "w7", title: "Folien-Gerüst erstellen", memberId: "m4", done: false, doneAt: null },
+          { id: "w8", title: "Demo-Ablauf proben",      memberId: "m2", done: false, doneAt: null }
+        ],
+        content: "# Präsentation\n\n- Problem\n- Lösung\n- Live-Demo\n- Grenzen von Vibe Coding",
+        notes: []
+      }
+    ]
+  };
+}
+
+/* ---------- Speichern & Laden ---------- */
+function loadData() {
+  try { const s = localStorage.getItem(STORE_KEY); if (s) return normalize(JSON.parse(s)); } catch (e) {}
+  return sampleData();
+}
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch (e) {} }
+
+// Sorgt dafür, dass auch Dateien aus Version 1 geladen werden können
+function normalize(d) {
+  d.categories = d.categories || ["Allgemein"];
+  d.members = d.members || [];
+  d.meetings = d.meetings || [];
+  d.documents = d.documents || [];
+  d.members.forEach((m, i) => { if (!/^#/.test(m.color || "")) m.color = COLORS[i % COLORS.length]; });
+  d.documents.forEach(doc => {
+    doc.responsibilities = doc.responsibilities || [];
+    doc.workflow = (doc.workflow || []).map(s => ({ ...s, doneAt: s.doneAt || s.completedAt || null }));
+    doc.notes = doc.notes || [];
+    doc.content = doc.content || "";
+  });
+  return d;
+}
+
+let data = loadData();
+let me = null;
+try { me = localStorage.getItem(ME_KEY); } catch (e) {}
+const ui = { view: "dashboard", docId: null, cat: "Alle", modal: null, preview: false };
+
+/* ---------- Hilfsfunktionen ---------- */
+const uid = p => p + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const getDoc = id => data.documents.find(d => d.id === id);
+const member = id => data.members.find(m => m.id === id) || { id: "", name: "Unbekannt", role: "", phone: "", color: "#999" };
+const initials = n => n.split(/\s+/).filter(Boolean).map(w => w[0]).join("").slice(0, 2).toUpperCase();
+const avatar = (m, size = "") => `<span class="avatar ${size}" style="background:${esc(m.color)}" title="${esc(m.name)}">${esc(initials(m.name))}</span>`;
+const pad = n => String(n).padStart(2, "0");
+
+function today0() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+function daysLeft(ds) { if (!ds) return null; return Math.round((new Date(ds + "T00:00:00") - today0()) / 86400000); }
+function daysLabel(n) {
+  if (n === null) return "ohne Termin";
+  if (n === 0) return "heute";
+  if (n === 1) return "morgen";
+  if (n < 0) return `${-n} Tag${n === -1 ? "" : "e"} überfällig`;
+  return `in ${n} Tagen`;
+}
+function urgency(n) { if (n === null) return ""; if (n <= 3) return "danger"; if (n <= 7) return "warn"; return ""; }
+function fmtDate(ds) { if (!ds) return "–"; return new Date(ds + "T00:00:00").toLocaleDateString("de-AT", { weekday: "short", day: "numeric", month: "short" }); }
+function progress(doc) { const w = doc.workflow; if (!w.length) return 0; return Math.round(w.filter(s => s.done).length / w.length * 100); }
+// Status eines Schritts: erledigt, jetzt dran, oder wartet auf den vorherigen
+function stepState(doc, i) {
+  const s = doc.workflow[i];
+  if (s.done) return "done";
+  if (i === 0 || doc.workflow[i - 1].done) return "active";
+  return "blocked";
+}
+function involved(doc) { return [...new Set([...doc.responsibilities.map(r => r.memberId), ...doc.workflow.map(s => s.memberId)])]; }
+
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2800);
+}
+function copy(text) {
+  if (!navigator.clipboard) { toast("Kopieren wird hier nicht unterstützt."); return; }
+  navigator.clipboard.writeText(text).then(() => toast("In die Zwischenablage kopiert ✓")).catch(() => toast("Kopieren nicht möglich."));
+}
+
+/* ---------- WhatsApp, SMS & Kalender (alles kostenlos, ohne Server) ---------- */
+function wa(phone, text) {
+  const p = (phone || "").replace(/\D/g, "");
+  window.open(`https://wa.me/${p}?text=${encodeURIComponent(text)}`, "_blank");
+}
+function sms(phones, text) {
+  const p = (phones || "").replace(/[^0-9+,]/g, "");
+  window.location.href = `sms:${p}?body=${encodeURIComponent(text)}`;
+}
+function icsText(s) { return String(s || "").replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;"); }
+function ymd(d) { return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`; }
+function icsEvent(ev) {
+  let start, end;
+  if (ev.time) {
+    const s = new Date(`${ev.date}T${ev.time}:00`);
+    const e = new Date(s.getTime() + 60 * 60 * 1000);
+    start = `DTSTART:${ymd(s)}T${pad(s.getHours())}${pad(s.getMinutes())}00`;
+    end = `DTEND:${ymd(e)}T${pad(e.getHours())}${pad(e.getMinutes())}00`;
+  } else {
+    const s = new Date(ev.date + "T00:00:00");
+    const e = new Date(s); e.setDate(e.getDate() + 1);
+    start = `DTSTART;VALUE=DATE:${ymd(s)}`; end = `DTEND;VALUE=DATE:${ymd(e)}`;
+  }
+  return [
+    "BEGIN:VEVENT", `UID:${ev.id}@groupsync`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").slice(0, 15)}Z`,
+    start, end, `SUMMARY:${icsText(ev.title)}`,
+    ev.location ? `LOCATION:${icsText(ev.location)}` : "",
+    "BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${icsText(ev.title)}`, "TRIGGER:-P1D", "END:VALARM",
+    "END:VEVENT"
+  ].filter(Boolean).join("\r\n");
+}
+function downloadIcs(events, filename) {
+  const body = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//GroupSync//DE", "CALSCALE:GREGORIAN", ...events.map(icsEvent), "END:VCALENDAR"].join("\r\n");
+  downloadFile(body, filename, "text/calendar");
+  toast("Kalenderdatei geladen – öffnen, um den Termin samt Erinnerung einzutragen.");
+}
+function downloadFile(content, filename, type) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const a = document.createElement("a"); a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Termine + Dokument-Abgaben in einer gemeinsamen Zeitleiste
+function timeline() {
+  const items = data.meetings.map(m => ({ ...m, kind: "meeting" }));
+  data.documents.forEach(d => {
+    if (d.deadline) items.push({ id: "dl_" + d.id, docId: d.id, title: "Abgabe: " + d.title, date: d.deadline, time: "", location: "", type: "Dokument", kind: "doc" });
+  });
+  return items.sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
+}
+function meetingMsg(m) { return `📅 Erinnerung: ${m.title}\n🕒 ${fmtDate(m.date)}${m.time ? `, ${m.time} Uhr` : ""}${m.location ? `\n📍 ${m.location}` : ""}`; }
+function stepMsg(d, s) { const m = member(s.memberId); return `Hallo ${m.name}! Kurze Erinnerung: Dein Schritt „${s.title}“ im Dokument „${d.title}“ steht an (Abgabe: ${fmtDate(d.deadline)}).`; }
+function handoverMsg(d, i) {
+  const s = d.workflow[i], next = d.workflow[i + 1];
+  return `Hallo ${member(next.memberId).name}! 👋\n${member(s.memberId).name} hat „${s.title}“ im Dokument „${d.title}“ erledigt.\n\nDu bist jetzt dran mit: „${next.title}“.\nAbgabe: ${fmtDate(d.deadline)}`;
+}
+
+// Sehr einfache Textformatierung für die Vorschau (# Überschrift, - Liste, **fett**)
+function md(text) {
+  return esc(text).split("\n").map(l => {
+    if (l.startsWith("### ")) return `<h4>${l.slice(4)}</h4>`;
+    if (l.startsWith("## ")) return `<h3>${l.slice(3)}</h3>`;
+    if (l.startsWith("# ")) return `<h2>${l.slice(2)}</h2>`;
+    if (l.startsWith("- ")) return `<li>${l.slice(2)}</li>`;
+    if (!l.trim()) return "<br>";
+    return `<p>${l}</p>`;
+  }).join("").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+}
+
+/* =====================================================================
+   ANSICHTEN
+   ===================================================================== */
+function render() {
+  document.getElementById("app").innerHTML = layout();
+  document.getElementById("modal-root").innerHTML = ui.modal ? modalHtml() : "";
+}
+
+function layout() {
+  const nav = [["dashboard", "🏠", "Übersicht"], ["documents", "📄", "Dokumente"], ["calendar", "📅", "Termine"], ["team", "👥", "Team"]];
+  const active = ui.view === "doc" ? "documents" : ui.view;
+  return `<div class="app">
+    <aside class="sidebar">
+      <div class="brand"><div class="logo">G</div><div><strong>GroupSync</strong><small>Version 2</small></div></div>
+      ${nav.map(([v, i, l]) => `<button class="nav-btn ${active === v ? "active" : ""}" data-action="nav" data-view="${v}"><span>${i}</span><span>${l}</span></button>`).join("")}
+      <div class="side-extra"><p class="label">Projektstand</p>${dataButtons("ghost")}</div>
+    </aside>
+    <main class="main">${viewHtml()}</main>
+  </div>`;
+}
+
+function viewHtml() {
+  if (ui.view === "documents") return viewDocuments();
+  if (ui.view === "doc") return viewDoc();
+  if (ui.view === "calendar") return viewCalendar();
+  if (ui.view === "team") return viewTeam();
+  return viewDashboard();
+}
+
+function dataButtons(style = "") {
+  return `<button class="btn small ${style}" data-action="export">⬇️ Exportieren</button>
+    <label class="btn small ${style}">⬆️ Importieren<input type="file" accept=".json" class="import-file" hidden></label>
+    <button class="btn small ${style}" data-action="reset">↺ Beispieldaten</button>`;
+}
+
+function meSelect() {
+  return `<label class="me">Ich bin
+    <select class="field" data-change="me">
+      <option value="">– wählen –</option>
+      ${data.members.map(m => `<option value="${m.id}" ${m.id === me ? "selected" : ""}>${esc(m.name)}</option>`).join("")}
+    </select></label>`;
+}
+function topbar(title, sub, actions = "") {
+  return `<div class="topbar"><div><h1>${title}</h1>${sub ? `<p class="muted">${sub}</p>` : ""}</div><div class="row">${actions}${meSelect()}</div></div>`;
+}
+function stat(label, value, sub) {
+  return `<div class="card stat"><div class="muted small">${label}</div><div class="num">${value}</div>${sub ? `<div class="muted small ellipsis">${sub}</div>` : ""}</div>`;
+}
+function typeBadge(type) {
+  const cls = type === "Abgabe" ? "danger" : type === "Dokument" ? "warn" : "primary";
+  return `<span class="badge ${cls}">${esc(type)}</span>`;
+}
+
+/* ---------- 1. Übersicht (Dashboard) ---------- */
+function viewDashboard() {
+  const meM = me ? data.members.find(m => m.id === me) : null;
+  const docs = data.documents;
+  const avg = docs.length ? Math.round(docs.reduce((a, d) => a + progress(d), 0) / docs.length) : 0;
+
+  const open = [];
+  docs.forEach(d => d.workflow.forEach((s, i) => { if (stepState(d, i) === "active") open.push({ d, s, i }); }));
+  open.sort((a, b) => (b.s.memberId === me) - (a.s.memberId === me));
+  const mineCount = meM ? open.filter(x => x.s.memberId === me).length : null;
+
+  const next = timeline().filter(t => daysLeft(t.date) >= 0).slice(0, 5);
+  const nextDl = docs.filter(d => d.deadline && progress(d) < 100 && daysLeft(d.deadline) >= 0).sort((a, b) => a.deadline.localeCompare(b.deadline))[0];
+  const critical = docs.filter(d => { const n = daysLeft(d.deadline); return n !== null && n <= 7 && progress(d) < 100; });
+
+  return topbar(
+    meM ? `Hallo ${esc(meM.name.split(" ")[0])} 👋` : "Hallo 👋",
+    meM ? "Das steht gerade an." : "Wähle rechts oben aus, wer du bist – dann siehst du deine eigenen Aufgaben."
+  ) + `
+  <div class="grid g-4">
+    ${stat("Dokumente", docs.length, "")}
+    ${stat("Ø Fortschritt", avg + " %", "")}
+    ${stat("Nächste Abgabe", nextDl ? daysLabel(daysLeft(nextDl.deadline)) : "–", nextDl ? esc(nextDl.title) : "")}
+    ${stat("Meine offenen Schritte", mineCount === null ? "–" : mineCount, mineCount === null ? "„Ich bin“ wählen" : "")}
+  </div>
+  ${critical.length ? `<div class="card alert">⚠️ <strong>Wird knapp:</strong> ${critical.map(d =>
+      `<a href="#" data-action="open-doc" data-doc="${d.id}">${esc(d.title)}</a> (${progress(d)} %, ${daysLabel(daysLeft(d.deadline))})`).join(" · ")}</div>` : ""}
+  <div class="grid g-2 mt">
+    <section class="card">
+      <h3>Jetzt an der Reihe</h3>
+      <p class="muted small">Schritte, die auf niemanden mehr warten</p>
+      ${open.length ? `<div class="list">${open.map(x => { const m = member(x.s.memberId); return `
+        <div class="list-item clickable" data-action="open-doc" data-doc="${x.d.id}">
+          ${avatar(m)}
+          <div class="grow"><div class="strong">${esc(x.s.title)}</div>
+            <div class="muted small">${esc(m.name)}${x.s.memberId === me ? ' <span class="badge primary">du</span>' : ""} · ${esc(x.d.title)}</div></div>
+          <button class="icon-btn" data-action="remind-step" data-doc="${x.d.id}" data-i="${x.i}" title="Per WhatsApp erinnern">💬</button>
+        </div>`; }).join("")}</div>` : `<p class="empty">Nichts offen 🎉</p>`}
+    </section>
+    <section class="card">
+      <h3>Nächste Termine</h3>
+      <p class="muted small">Treffen und Abgaben</p>
+      ${next.length ? `<div class="list">${next.map(t => { const dt = new Date(t.date + "T00:00:00"); return `
+        <div class="list-item ${t.kind === "doc" ? "clickable" : ""}" ${t.kind === "doc" ? `data-action="open-doc" data-doc="${t.docId}"` : ""}>
+          <div class="datebox"><b>${dt.getDate()}</b><span>${dt.toLocaleDateString("de-AT", { month: "short" })}</span></div>
+          <div class="grow"><div class="strong">${esc(t.title)}</div>
+            <div class="muted small">${t.time ? esc(t.time) + " Uhr · " : ""}${daysLabel(daysLeft(t.date))}</div></div>
+          ${typeBadge(t.type)}
+        </div>`; }).join("")}</div>` : `<p class="empty">Keine Termine.</p>`}
+    </section>
+  </div>`;
+}
+
+/* ---------- 2. Dokumente ---------- */
+function viewDocuments() {
+  const cats = ["Alle", ...data.categories];
+  const docs = ui.cat === "Alle" ? data.documents : data.documents.filter(d => d.category === ui.cat);
+  return topbar("Dokumente", "Jedes Dokument hat sein eigenes Übersichtsblatt", `<button class="btn primary" data-action="new-doc">＋ Neues Dokument</button>`) + `
+  <div class="chips">${cats.map(c => `<button class="chip ${ui.cat === c ? "active" : ""}" data-action="cat" data-cat="${esc(c)}">${esc(c)}<span>${c === "Alle" ? data.documents.length : data.documents.filter(d => d.category === c).length}</span></button>`).join("")}</div>
+  <div class="grid docs">${docs.length ? docs.map(docCard).join("") : `<p class="empty">Noch keine Dokumente in dieser Kategorie.</p>`}</div>`;
+}
+
+function docCard(d) {
+  const p = progress(d), n = daysLeft(d.deadline);
+  const act = d.workflow.findIndex((s, i) => stepState(d, i) === "active");
+  return `<article class="card doc-card clickable" data-action="open-doc" data-doc="${d.id}">
+    <div class="row between"><span class="badge">${esc(d.category)}</span><span class="badge ${p === 100 ? "ok" : urgency(n)}">${d.deadline ? fmtDate(d.deadline) : "ohne Termin"}</span></div>
+    <h3>${esc(d.title)}</h3>
+    <p class="muted small clamp">${esc(d.description)}</p>
+    <div class="progress"><span style="width:${p}%"></span></div>
+    <div class="row between small"><span class="avatars">${involved(d).map(id => avatar(member(id))).join("")}</span><span class="strong">${p} %</span></div>
+    <div class="muted small">${p === 100 ? "✅ Fertig" : act >= 0 ? `Jetzt dran: <b>${esc(member(d.workflow[act].memberId).name)}</b>` : "Noch kein Ablauf festgelegt"}</div>
+  </article>`;
+}
+
+/* ---------- 3. Übersichtsblatt eines Dokuments ---------- */
+function viewDoc() {
+  const d = getDoc(ui.docId);
+  if (!d) { ui.view = "documents"; return viewDocuments(); }
+  const p = progress(d), n = daysLeft(d.deadline);
+  const memberOpts = `<option value="">Person …</option>` + data.members.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join("");
+
+  return `<button class="btn ghost small back" data-action="nav" data-view="documents">← Alle Dokumente</button>
+  <div class="card doc-head">
+    <div class="grow">
+      <div class="row"><span class="badge">${esc(d.category)}</span>
+        <span class="badge ${p === 100 ? "ok" : urgency(n)}">Abgabe ${fmtDate(d.deadline)} · ${daysLabel(n)}</span>
+        ${meSelect()}</div>
+      <h1>${esc(d.title)}</h1>
+      <p class="muted">${esc(d.description)}</p>
+      <div class="row">
+        <button class="btn small" data-action="edit-doc" data-doc="${d.id}">✏️ Bearbeiten</button>
+        <button class="btn small" data-action="ics-doc" data-doc="${d.id}">📆 Abgabe in Kalender</button>
+        <button class="btn small danger-text" data-action="del-doc" data-doc="${d.id}">🗑️ Löschen</button>
+      </div>
+    </div>
+    <div class="ring" style="--p:${p}"><span>${p}%</span></div>
+  </div>
+
+  <div class="grid g-2 mt">
+    <div class="stack">
+      <section class="card">
+        <h3>Ablauf & Abhängigkeiten</h3>
+        <p class="muted small">Ein Schritt wird erst frei, wenn der vorherige erledigt ist.</p>
+        <div class="chain">${d.workflow.length ? d.workflow.map((s, i) => stepHtml(d, s, i)).join('<div class="connector"></div>') : `<p class="empty">Noch keine Schritte.</p>`}</div>
+        <form class="inline-form" data-form="step" data-doc="${d.id}">
+          <input class="field" name="title" placeholder="Nächster Schritt, z. B. Korrekturlesen" required>
+          <select class="field" name="memberId" required>${memberOpts}</select>
+          <button class="btn primary">＋</button>
+        </form>
+      </section>
+      <section class="card">
+        <h3>Zuständigkeiten</h3>
+        ${d.responsibilities.length ? `<div class="list">${d.responsibilities.map((r, i) => { const m = member(r.memberId); return `
+          <div class="list-item">${avatar(m)}
+            <div class="grow"><div class="strong">${esc(m.name)}</div><div class="muted small">${esc(r.task)}</div></div>
+            <button class="icon-btn" data-action="del-resp" data-doc="${d.id}" data-i="${i}" title="Entfernen">✕</button>
+          </div>`; }).join("")}</div>` : `<p class="empty">Noch niemand eingetragen.</p>`}
+        <form class="inline-form" data-form="resp" data-doc="${d.id}">
+          <input class="field" name="task" placeholder="Aufgabe, z. B. Kapitel 4" required>
+          <select class="field" name="memberId" required>${memberOpts}</select>
+          <button class="btn primary">＋</button>
+        </form>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="card">
+        <div class="row between"><h3>Text</h3>
+          <div class="row">
+            <button class="btn small" data-action="toggle-preview">${ui.preview ? "✏️ Bearbeiten" : "👁️ Vorschau"}</button>
+            <button class="btn small" data-action="copy-text" data-doc="${d.id}">Kopieren</button>
+          </div></div>
+        ${ui.preview
+          ? `<div class="preview">${md(d.content)}</div>`
+          : `<textarea class="field editor" data-input="content" data-doc="${d.id}" placeholder="Hier schreiben … (# Überschrift, - Liste, **fett**)">${esc(d.content)}</textarea>
+             <p class="muted small">Wird automatisch gespeichert – aber nur in diesem Browser.</p>`}
+      </section>
+      <section class="card">
+        <h3>Übergabe-Notizen</h3>
+        <form class="inline-form" data-form="note" data-doc="${d.id}">
+          <input class="field" name="text" placeholder="Info für die nächste Person …" required>
+          <button class="btn primary">Senden</button>
+        </form>
+        ${d.notes.length ? `<div class="list">${d.notes.map(nt => `
+          <div class="note"><div class="row between small"><b>${esc(nt.author)}</b><span class="muted">${esc(nt.time)}</span></div><div>${esc(nt.text)}</div></div>`).join("")}</div>`
+          : `<p class="empty">Noch keine Notizen.</p>`}
+      </section>
+    </div>
+  </div>`;
+}
+
+function stepHtml(d, s, i) {
+  const st = stepState(d, i), m = member(s.memberId);
+  const badge = st === "done" ? `<span class="badge ok">✓ erledigt ${esc(s.doneAt || "")}</span>`
+    : st === "active" ? `<span class="badge primary">Jetzt dran</span>`
+    : `<span class="badge warn">🔒 wartet auf ${esc(member(d.workflow[i - 1].memberId).name)}</span>`;
+  return `<div class="step ${st}">
+    <button class="check" data-action="toggle-step" data-doc="${d.id}" data-i="${i}" title="${st === "done" ? "Zurücksetzen" : "Als erledigt markieren"}">${st === "done" ? "✓" : i + 1}</button>
+    <div class="grow">
+      <div class="title">${esc(s.title)}</div>
+      <div class="row small">${avatar(m)}<span>${esc(m.name)}${s.memberId === me ? " (du)" : ""}</span>${badge}</div>
+    </div>
+    ${st !== "done" ? `<button class="icon-btn" data-action="remind-step" data-doc="${d.id}" data-i="${i}" title="Per WhatsApp erinnern">💬</button>` : ""}
+    <button class="icon-btn" data-action="del-step" data-doc="${d.id}" data-i="${i}" title="Schritt löschen">🗑️</button>
+  </div>`;
+}
+
+/* ---------- 4. Termine ---------- */
+function viewCalendar() {
+  const items = timeline();
+  const up = items.filter(t => daysLeft(t.date) >= 0), past = items.filter(t => daysLeft(t.date) < 0);
+  return topbar("Termine", "Treffen, Abgaben und Dokument-Deadlines auf einen Blick",
+    `<button class="btn" data-action="ics-all">📆 Alle in Kalender</button><button class="btn primary" data-action="new-meeting">＋ Termin</button>`) + `
+  <div class="card hint">💡 <b>Tipp:</b> Mit „In Kalender“ landet ein Termin samt Erinnerung einen Tag vorher im Handy-Kalender – automatisch und kostenlos.</div>
+  <section class="mt"><h3>Kommend</h3><div class="stack mt">${up.length ? up.map(calItem).join("") : `<p class="empty">Keine kommenden Termine.</p>`}</div></section>
+  ${past.length ? `<section class="mt past"><h3>Vergangen</h3><div class="stack mt">${past.map(calItem).join("")}</div></section>` : ""}`;
+}
+
+function calItem(t) {
+  const n = daysLeft(t.date), dt = new Date(t.date + "T00:00:00");
+  const label = n < 0 && t.kind !== "doc" ? "vorbei" : daysLabel(n);
+  const cls = n < 0 && t.kind !== "doc" ? "" : urgency(n);
+  const actions = t.kind === "doc"
+    ? `<button class="btn small" data-action="open-doc" data-doc="${t.docId}">Öffnen</button>
+       <button class="btn small" data-action="ics" data-id="${t.id}">📆 In Kalender</button>`
+    : `<button class="btn small wa" data-action="meet-wa" data-id="${t.id}">💬 WhatsApp</button>
+       <button class="btn small" data-action="meet-sms" data-id="${t.id}">✉️ SMS ans Team</button>
+       <button class="btn small" data-action="ics" data-id="${t.id}">📆 In Kalender</button>
+       <button class="icon-btn" data-action="edit-meeting" data-id="${t.id}" title="Bearbeiten">✏️</button>
+       <button class="icon-btn" data-action="del-meeting" data-id="${t.id}" title="Löschen">🗑️</button>`;
+  return `<div class="card cal-item">
+    <div class="datebox"><b>${dt.getDate()}</b><span>${dt.toLocaleDateString("de-AT", { month: "short" })}</span></div>
+    <div class="grow">
+      <div class="row">${typeBadge(t.type)}<span class="badge ${cls}">${label}</span></div>
+      <div class="strong">${esc(t.title)}</div>
+      <div class="muted small">${fmtDate(t.date)}${t.time ? " · " + esc(t.time) + " Uhr" : ""}${t.location ? " · 📍 " + esc(t.location) : ""}</div>
+    </div>
+    <div class="row actions">${actions}</div>
+  </div>`;
+}
+
+/* ---------- 5. Team ---------- */
+function viewTeam() {
+  return topbar("Team", "Kontakte für Erinnerungen per WhatsApp & SMS", `<button class="btn primary" data-action="new-member">＋ Person</button>`) + `
+  <div class="grid docs">${data.members.map(m => {
+    const resp = data.documents.reduce((a, d) => a + d.responsibilities.filter(r => r.memberId === m.id).length, 0);
+    let open = 0;
+    data.documents.forEach(d => d.workflow.forEach((s, i) => { if (s.memberId === m.id && stepState(d, i) !== "done") open++; }));
+    return `<article class="card member">
+      <div class="row">${avatar(m, "lg")}<div class="grow"><div class="strong">${esc(m.name)}${m.id === me ? ' <span class="badge primary">du</span>' : ""}</div><div class="muted small">${esc(m.role)}</div></div></div>
+      <div class="muted small mono">${esc(m.phone || "keine Nummer")}</div>
+      <div class="small">${resp} Zuständigkeit${resp === 1 ? "" : "en"} · ${open} offene${open === 1 ? "r" : ""} Schritt${open === 1 ? "" : "e"}</div>
+      <div class="row">
+        <button class="btn small wa" data-action="member-wa" data-id="${m.id}">💬 WhatsApp</button>
+        <button class="btn small" data-action="member-sms" data-id="${m.id}">✉️ SMS</button>
+        <button class="icon-btn" data-action="edit-member" data-id="${m.id}" title="Bearbeiten">✏️</button>
+        <button class="icon-btn" data-action="del-member" data-id="${m.id}" title="Löschen">🗑️</button>
+      </div>
+    </article>`; }).join("")}</div>
+  <div class="card mt">
+    <h3>Projektstand teilen</h3>
+    <p class="muted small">Die App speichert alles nur in deinem Browser. Zum Teilen: exportieren, Datei an die Gruppe schicken, die anderen importieren sie.</p>
+    <div class="row mt">${dataButtons()}</div>
+    <p class="muted small mt">🔒 Im öffentlichen GitHub-Repo bitte nur erfundene Telefonnummern verwenden.</p>
+  </div>`;
+}
+
+/* ---------- Fenster (Modals) ---------- */
+function wrap(title, body) {
+  return `<div class="modal-bg" data-action="close-bg"><div class="modal card" role="dialog">
+    <div class="row between"><h3>${title}</h3><button class="icon-btn" data-action="close" title="Schließen">✕</button></div>${body}</div></div>`;
+}
+function formButtons() {
+  return `<div class="row" style="justify-content:flex-end"><button type="button" class="btn ghost" data-action="close">Abbrechen</button><button class="btn primary">Speichern</button></div>`;
+}
+
+function modalHtml() {
+  const m = ui.modal;
+
+  if (m.type === "handover") {
+    const d = getDoc(m.docId), next = d.workflow[m.i + 1];
+    return wrap("🎉 Schritt erledigt!", `
+      <p class="mt">Jetzt ist <b>${esc(member(next.memberId).name)}</b> dran. Willst du Bescheid geben?</p>
+      <div class="msg">${esc(handoverMsg(d, m.i))}</div>
+      <div class="row">
+        <button class="btn wa" data-action="handover-wa">💬 WhatsApp</button>
+        <button class="btn" data-action="handover-sms">✉️ SMS</button>
+        <button class="btn" data-action="handover-copy">Kopieren</button>
+      </div>
+      <button class="btn ghost full" data-action="close">Später</button>`);
+  }
+
+  if (m.type === "doc-form") {
+    const d = m.id ? getDoc(m.id) : { title: "", category: ui.cat !== "Alle" ? ui.cat : data.categories[0] || "Allgemein", deadline: "", description: "" };
+    return wrap(m.id ? "Dokument bearbeiten" : "Neues Dokument", `<form data-form="doc">
+      <label>Titel<input class="field" name="title" required value="${esc(d.title)}"></label>
+      <div class="grid g-2">
+        <label>Kategorie<input class="field" name="category" list="cats" value="${esc(d.category)}" placeholder="wählen oder neu tippen"></label>
+        <label>Abgabe<input class="field" type="date" name="deadline" value="${esc(d.deadline)}"></label>
+      </div>
+      <datalist id="cats">${data.categories.map(c => `<option value="${esc(c)}">`).join("")}</datalist>
+      <label>Kurzbeschreibung<input class="field" name="description" value="${esc(d.description)}"></label>
+      ${formButtons()}</form>`);
+  }
+
+  if (m.type === "meeting-form") {
+    const t = m.id ? data.meetings.find(x => x.id === m.id) : { title: "", date: "", time: "", location: "", type: "Treffen" };
+    return wrap(m.id ? "Termin bearbeiten" : "Neuer Termin", `<form data-form="meeting">
+      <label>Art<select class="field" name="type">
+        <option value="Treffen" ${t.type === "Treffen" ? "selected" : ""}>Treffen / Besprechung</option>
+        <option value="Abgabe" ${t.type === "Abgabe" ? "selected" : ""}>Abgabe / Deadline</option></select></label>
+      <label>Titel<input class="field" name="title" required value="${esc(t.title)}" placeholder="z. B. Endbesprechung"></label>
+      <div class="grid g-2">
+        <label>Datum<input class="field" type="date" name="date" required value="${esc(t.date)}"></label>
+        <label>Uhrzeit<input class="field" type="time" name="time" value="${esc(t.time)}"></label>
+      </div>
+      <label>Ort / Link<input class="field" name="location" value="${esc(t.location)}" placeholder="z. B. Seminarraum oder Online"></label>
+      ${formButtons()}</form>`);
+  }
+
+  if (m.type === "member-form") {
+    const p = m.id ? member(m.id) : { name: "", role: "", phone: "" };
+    return wrap(m.id ? "Person bearbeiten" : "Neue Person", `<form data-form="member">
+      <label>Name<input class="field" name="name" required value="${esc(p.name)}" placeholder="z. B. Lisa M."></label>
+      <label>Rolle / Hauptaufgabe<input class="field" name="role" value="${esc(p.role)}"></label>
+      <label>Telefonnummer<input class="field" name="phone" value="${esc(p.phone)}" placeholder="+43 …"></label>
+      <p class="muted small">Im öffentlichen Repo nur erfundene Nummern verwenden.</p>
+      ${formButtons()}</form>`);
+  }
+  return "";
+}
+
+/* =====================================================================
+   AKTIONEN (was passiert bei Klicks und Formularen)
+   ===================================================================== */
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-action]");
+  if (!el) return;
+  if (el.tagName === "A") e.preventDefault();
+  const a = el.dataset.action;
+  const d = el.dataset.doc ? getDoc(el.dataset.doc) : null;
+  const i = el.dataset.i !== undefined ? Number(el.dataset.i) : null;
+  const id = el.dataset.id;
+
+  switch (a) {
+    case "nav": ui.view = el.dataset.view; ui.preview = false; window.scrollTo(0, 0); break;
+    case "open-doc": ui.view = "doc"; ui.docId = el.dataset.doc; ui.preview = false; window.scrollTo(0, 0); break;
+    case "cat": ui.cat = el.dataset.cat; break;
+    case "close": ui.modal = null; break;
+    case "close-bg": if (e.target !== el) return; ui.modal = null; break;
+
+    // Dokumente
+    case "new-doc": ui.modal = { type: "doc-form" }; break;
+    case "edit-doc": ui.modal = { type: "doc-form", id: d.id }; break;
+    case "del-doc":
+      if (!confirm(`„${d.title}“ wirklich löschen?`)) return;
+      data.documents = data.documents.filter(x => x.id !== d.id); ui.view = "documents"; save(); toast("Dokument gelöscht"); break;
+    case "ics-doc":
+      if (!d.deadline) { toast("Dieses Dokument hat keinen Abgabetermin."); return; }
+      downloadIcs([{ id: "dl_" + d.id, title: "Abgabe: " + d.title, date: d.deadline }], "abgabe.ics"); return;
+    case "toggle-preview": ui.preview = !ui.preview; break;
+    case "copy-text": copy(d.content); return;
+
+    // Ablauf-Schritte
+    case "toggle-step": {
+      const s = d.workflow[i], st = stepState(d, i);
+      if (st === "blocked") { toast(`Erst muss ${member(d.workflow[i - 1].memberId).name} fertig sein.`); return; }
+      if (s.done) {
+        if (d.workflow[i + 1] && d.workflow[i + 1].done) { toast("Der nächste Schritt ist schon erledigt – setze erst den zurück."); return; }
+        s.done = false; s.doneAt = null;
+      } else {
+        s.done = true; s.doneAt = new Date().toLocaleDateString("de-AT");
+        if (d.workflow[i + 1]) ui.modal = { type: "handover", docId: d.id, i };
+        else toast("Letzter Schritt erledigt – Dokument fertig! 🎉");
+      }
+      save(); break;
+    }
+    case "remind-step": wa(member(d.workflow[i].memberId).phone, stepMsg(d, d.workflow[i])); return;
+    case "del-step": if (!confirm("Diesen Schritt löschen?")) return; d.workflow.splice(i, 1); save(); break;
+    case "del-resp": d.responsibilities.splice(i, 1); save(); break;
+
+    // Übergabe an die nächste Person
+    case "handover-wa": case "handover-sms": case "handover-copy": {
+      const hd = getDoc(ui.modal.docId), msg = handoverMsg(hd, ui.modal.i), phone = member(hd.workflow[ui.modal.i + 1].memberId).phone;
+      if (a === "handover-wa") wa(phone, msg);
+      if (a === "handover-sms") sms(phone, msg);
+      if (a === "handover-copy") { copy(msg); return; }
+      ui.modal = null; break;
+    }
+
+    // Termine
+    case "new-meeting": ui.modal = { type: "meeting-form" }; break;
+    case "edit-meeting": ui.modal = { type: "meeting-form", id }; break;
+    case "del-meeting": if (!confirm("Termin löschen?")) return; data.meetings = data.meetings.filter(m => m.id !== id); save(); break;
+    case "meet-wa": wa("", meetingMsg(data.meetings.find(m => m.id === id))); return;
+    case "meet-sms": sms(data.members.map(m => m.phone).filter(Boolean).join(","), meetingMsg(data.meetings.find(m => m.id === id))); return;
+    case "ics": downloadIcs([timeline().find(t => t.id === id)], "termin.ics"); return;
+    case "ics-all": {
+      const up = timeline().filter(t => daysLeft(t.date) >= 0);
+      if (!up.length) { toast("Keine kommenden Termine."); return; }
+      downloadIcs(up, "groupsync-termine.ics"); return;
+    }
+
+    // Team
+    case "new-member": ui.modal = { type: "member-form" }; break;
+    case "edit-member": ui.modal = { type: "member-form", id }; break;
+    case "del-member":
+      if (!confirm(`${member(id).name} wirklich entfernen? Zugewiesene Schritte bleiben als „Unbekannt“ stehen.`)) return;
+      data.members = data.members.filter(m => m.id !== id);
+      if (me === id) { me = null; try { localStorage.removeItem(ME_KEY); } catch (e) {} }
+      save(); break;
+    case "member-wa": wa(member(id).phone, `Hallo ${member(id).name}! 👋`); return;
+    case "member-sms": sms(member(id).phone, `Hallo ${member(id).name}!`); return;
+
+    // Daten
+    case "export":
+      downloadFile(JSON.stringify(data, null, 2), `groupsync-stand-${new Date().toISOString().slice(0, 10)}.json`, "application/json");
+      toast("Projektstand exportiert – Datei an die Gruppe schicken."); return;
+    case "reset":
+      if (!confirm("Alle Daten durch die Beispieldaten ersetzen?")) return;
+      data = sampleData(); ui.view = "dashboard"; ui.cat = "Alle"; save(); toast("Beispieldaten geladen"); break;
+    default: return;
+  }
+  render();
+});
+
+// Formulare
+document.addEventListener("submit", e => {
+  const f = e.target, kind = f.dataset.form;
+  if (!kind) return;
+  e.preventDefault();
+  const v = Object.fromEntries([...new FormData(f)].map(([k, val]) => [k, String(val).trim()]));
+  const d = f.dataset.doc ? getDoc(f.dataset.doc) : null;
+
+  if (kind === "doc") {
+    if (!v.title) return;
+    const cat = v.category || "Allgemein";
+    if (!data.categories.includes(cat)) data.categories.push(cat);
+    if (ui.modal.id) {
+      Object.assign(getDoc(ui.modal.id), { title: v.title, category: cat, deadline: v.deadline, description: v.description });
+    } else {
+      const nd = { id: uid("d"), title: v.title, category: cat, deadline: v.deadline, description: v.description,
+        responsibilities: [], workflow: [], content: `# ${v.title}\n\n`, notes: [] };
+      data.documents.push(nd); ui.view = "doc"; ui.docId = nd.id;
+    }
+    ui.modal = null;
+  }
+  if (kind === "meeting") {
+    if (!v.title || !v.date) return;
+    const entry = { title: v.title, date: v.date, time: v.time, location: v.location, type: v.type };
+    if (ui.modal.id) Object.assign(data.meetings.find(m => m.id === ui.modal.id), entry);
+    else data.meetings.push({ id: uid("mt"), ...entry });
+    ui.modal = null;
+  }
+  if (kind === "member") {
+    if (!v.name) return;
+    if (ui.modal.id) Object.assign(data.members.find(m => m.id === ui.modal.id), { name: v.name, role: v.role, phone: v.phone });
+    else data.members.push({ id: uid("m"), name: v.name, role: v.role || "Mitglied", phone: v.phone, color: COLORS[data.members.length % COLORS.length] });
+    ui.modal = null;
+  }
+  if (kind === "step") { if (!v.title || !v.memberId) return; d.workflow.push({ id: uid("w"), title: v.title, memberId: v.memberId, done: false, doneAt: null }); }
+  if (kind === "resp") { if (!v.task || !v.memberId) return; d.responsibilities.push({ memberId: v.memberId, task: v.task }); }
+  if (kind === "note") {
+    if (!v.text) return;
+    if (!me) toast("Tipp: Wähle oben „Ich bin“, dann steht dein Name bei der Notiz.");
+    d.notes.unshift({ id: uid("n"), author: me ? member(me).name : "Unbekannt", text: v.text, time: new Date().toLocaleString("de-AT", { dateStyle: "short", timeStyle: "short" }) });
+  }
+  save(); render();
+});
+
+// Auswahl "Ich bin" und Datei-Import
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.dataset.change === "me") {
+    me = t.value || null;
+    try { me ? localStorage.setItem(ME_KEY, me) : localStorage.removeItem(ME_KEY); } catch (err) {}
+    render();
+  }
+  if (t.classList.contains("import-file") && t.files[0]) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (!Array.isArray(parsed.documents) || !Array.isArray(parsed.members)) throw new Error();
+        data = normalize(parsed); save(); ui.view = "dashboard"; render(); toast("Projektstand geladen ✓");
+      } catch (err) { toast("Diese Datei passt nicht."); }
+    };
+    reader.readAsText(t.files[0]);
+  }
+});
+
+// Text im Editor speichern, während man tippt
+document.addEventListener("input", e => {
+  if (e.target.dataset.input === "content") { getDoc(e.target.dataset.doc).content = e.target.value; save(); }
+});
+
+// Escape schließt Fenster
+document.addEventListener("keydown", e => { if (e.key === "Escape" && ui.modal) { ui.modal = null; render(); } });
+
+render();
+</script>
+</body>
+</html>
