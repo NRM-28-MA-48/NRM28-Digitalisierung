@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nachrichten- und Redaktionsmedium (NRM)</title>
+  <link id="app-favicon" rel="icon" type="image/png" href="48er.png" />
+  <link id="app-touch-icon" rel="apple-touch-icon" href="48er.png" />
+  <!-- Tailwind CSS (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <!-- React & Babel (CDN) -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Firebase App & Firestore SDKs (Mit deinen echten Daten) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAWxyk4OU8NkDRMNSdrmFTr0qIJwY-1d3c",
+      authDomain: "digitalisierung-nrm.firebaseapp.com",
+      projectId: "digitalisierung-nrm",
+      storageBucket: "digitalisierung-nrm.firebasestorage.app",
+      messagingSenderId: "189073900648",
+      appId: "1:189073900648:web:dc5f71ce827d8dd811e7dd",
+      measurementId: "G-096VQ2961F"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.nrmFirebase = { db, doc, setDoc, getDoc, onSnapshot };
+    window.dispatchEvent(new Event("firebase-ready"));
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #fdba74; border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-orange-50/30 text-slate-800">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const FALLBACK_48ER_SVG = "data:image/svg+xml;utf8," + encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 360" fill="none">
+        <text x="25" y="295" fill="#0d6efd" font-family="Arial, sans-serif" font-weight="900" font-style="italic" font-size="78">DIE</text>
+        <path d="M210 55 L95 205 L245 190 M195 95 L165 305" stroke="#0d6efd" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M315 165 C255 120 265 45 320 65 C335 72 340 90 340 90 C340 90 355 55 390 65 C435 78 415 145 350 175 C275 210 235 265 275 295 C315 320 395 295 390 235 C386 195 345 182 315 165 Z" stroke="#ef233c" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="385" y="295" fill="#0d6efd" font-family="Arial, sans-serif" font-weight="900" font-style="italic" font-size="72">ER</text>
+      </svg>
+    `);
+
+    const INITIAL_DATA = {
+      categories: ["Allgemein", "Redaktion & Beiträge", "Recherche & Daten", "Layout & Medien", "Organisation"],
+      members: [
+        { id: "m1", name: "Anna M.", role: "Chefredaktion & Koordination", phone: "+436641234567", color: "bg-orange-600" },
+        { id: "m2", name: "Lukas K.", role: "Recherche & Faktenprüfung", phone: "+436609876543", color: "bg-amber-600" },
+        { id: "m3", name: "Sarah W.", role: "Text & Lektorat", phone: "+436761122334", color: "bg-red-600" },
+        { id: "m4", name: "Max B.", role: "Grafik & Gestaltung", phone: "+436995566778", color: "bg-blue-600" }
+      ],
+      meetings: [
+        { id: "mt1", title: "Redaktionssitzung & Themenplanung", date: "2026-11-05", time: "17:00", location: "Online / Besprechungsraum", type: "Treffen" },
+        { id: "mt2", title: "Zwischenstand & Layout-Check", date: "2026-11-15", time: "18:30", location: "Redaktionsbüro", type: "Treffen" },
+        { id: "mt3", title: "Redaktionsschluss / Finale Abgabe", date: "2026-11-28", time: "23:59", location: "Upload-Portal", type: "Abgabe" }
+      ],
+      documents: [
+        {
+          id: "d1",
+          title: "Hauptbeitrag: Aktuelle Projektanalyse & Bericht",
+          category: "Redaktion & Beiträge",
+          deadline: "2026-11-20",
+          description: "Gemeinsamer Hauptartikel mit Einleitung, Hintergrunddaten, Interview und Fazit.",
+          responsibilities: [
+            { memberId: "m1", task: "Kapitel 1: Leitartikel & Zielsetzung" },
+            { memberId: "m2", task: "Kapitel 2: Datenauswertung & Hintergrund" },
+            { memberId: "m3", task: "Kapitel 3: Feinschliff & Endlektorat" },
+            { memberId: "m4", task: "Titelbild, Infografiken & Layout" }
+          ],
+          workflow: [
+            { id: "w1", step: 1, title: "Grundstruktur & Leitfaden anlegen", memberId: "m1", done: true, completedAt: "25.10.2026" },
+            { id: "w2", step: 2, title: "Recherche-Daten & Zahlen einfügen (wartet auf Schritt 1)", memberId: "m2", done: false, completedAt: null },
+            { id: "w3", step: 3, title: "Text ausformulieren & Lektorat (wartet auf Schritt 2)", memberId: "m3", done: false, completedAt: null },
+            { id: "w4", step: 4, title: "Finales Satz-Layout & PDF-Freigabe (wartet auf Schritt 3)", memberId: "m4", done: false, completedAt: null }
+          ],
+          files: [],
+          content: "# Hauptbeitrag: Projektanalyse\n\n## 1. Einleitung (Anna M.)\nDie Grundstruktur steht bereits...\n\n## 2. Hintergrund & Zahlen (Lukas K.)\n[Hier Daten eintragen]",
+          notes: []
+        }
+      ]
+    };
+
+    function App() {
+      const [logoSrc, setLogoSrc] = useState(FALLBACK_48ER_SVG);
+      const [data, setData] = useState(INITIAL_DATA);
+      const [syncStatus, setSyncStatus] = useState("Verbinde mit Cloud...");
+
+      useEffect(() => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const d = imgData.data;
+            for (let i = 0; i < d.length; i += 4) {
+              const r = d[i], g = d[i + 1], b = d[i + 2];
+              if (r > 240 && g > 240 && b > 240) d[i + 3] = 0;
+            }
+            ctx.putImageData(imgData, 0, 0);
+            setLogoSrc(canvas.toDataURL("image/png"));
+          } catch (e) {
+            setLogoSrc("48er.png");
+          }
+        };
+        img.src = "48er.png";
+      }, []);
+
+      useEffect(() => {
+        const initFirebaseSync = () => {
+          if (!window.nrmFirebase) return;
+          const { db, doc, setDoc, onSnapshot } = window.nrmFirebase;
+          const docRef = doc(db, "nrm_projekte", "hauptstand");
+
+          onSnapshot(docRef, async (snapshot) => {
+            if (snapshot.exists()) {
+              setData(snapshot.data());
+              setSyncStatus("Live verbunden (Cloud)");
+            } else {
+              await setDoc(docRef, INITIAL_DATA);
+              setData(INITIAL_DATA);
+              setSyncStatus("Cloud initialisiert");
+            }
+          }, (error) => {
+            console.error("Firestore Error:", error);
+            setSyncStatus("Offline-Modus (Lokal)");
+          });
+        };
+
+        if (window.nrmFirebase) {
+          initFirebaseSync();
+        } else {
+          window.addEventListener("firebase-ready", initFirebaseSync);
+        }
+      }, []);
+
+      const updateDataAndCloud = (updater) => {
+        setData(prev => {
+          const newData = typeof updater === "function" ? updater(prev) : updater;
+          if (window.nrmFirebase) {
+            const { db, doc, setDoc } = window.nrmFirebase;
+            const docRef = doc(db, "nrm_projekte", "hauptstand");
+            setDoc(docRef, newData).catch(err => console.log("Cloud-Sync Fehler:", err));
+          }
+          return newData;
+        });
+      };
+
+      const [activeTab, setActiveTab] = useState("documents");
+      const [calendarDate, setCalendarDate] = useState(new Date());
+      const [meetingForm, setMeetingForm] = useState({ title: "", date: "", time: "", location: "", type: "Treffen" });
+      const [showMeetingForm, setShowMeetingForm] = useState(false);
+      const [selectedCategory, setSelectedCategory] = useState("Alle");
+      const [selectedDocId, setSelectedDocId] = useState(data.documents[0]?.id || null);
+      const [docViewMode, setDocViewMode] = useState("split");
+      const [notificationModal, setNotificationModal] = useState(null);
+
+      const [newDocModal, setNewDocModal] = useState(false);
+      const [newDocForm, setNewDocForm] = useState({ title: "", category: "Allgemein", deadline: "", description: "" });
+      const [newStepForm, setNewStepForm] = useState({ title: "", memberId: "" });
+      const [newRespForm, setNewRespForm] = useState({ task: "", memberId: "" });
+      const [newNoteText, setNewNoteText] = useState("");
+
+      const [uploadMemberId, setUploadMemberId] = useState("");
+      const [uploadComment, setUploadComment] = useState("");
+
+      const activeDoc = (data.documents || []).find(d => d.id === selectedDocId) || data.documents[0] || {};
+
+      const getMember = (id) => (data.members || []).find(m => m.id === id) || { name: "Redaktion", phone: "", color: "bg-orange-500", role: "" };
+
+      const getProgress = (doc) => {
+        if (!doc || !doc.workflow || doc.workflow.length === 0) return 0;
+        const doneCount = doc.workflow.filter(w => w.done).length;
+        return Math.round((doneCount / doc.workflow.length) * 100);
+      };
+
+      const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file || !activeDoc.id) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const uploader = uploadMemberId ? getMember(uploadMemberId).name : "Redaktion";
+          const newFile = {
+            id: "f_" + Date.now(),
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            dataUrl: ev.target.result,
+            uploadedBy: uploader,
+            comment: uploadComment || "Aktualisiert",
+            uploadedAt: new Date().toLocaleString("de-DE"),
+            isExternal: false
+          };
+          updateDataAndCloud(prev => ({
+            ...prev,
+            documents: prev.documents.map(d => d.id === activeDoc.id ? { ...d, files: [newFile, ...(d.files || [])] } : d)
+          }));
+          setUploadComment("");
+          e.target.value = "";
+        };
+        reader.readAsDataURL(file);
+      };
+
+      const deleteFile = (fileId) => {
+        if (!confirm("Datei wirklich entfernen?")) return;
+        updateDataAndCloud(prev => ({
+          ...prev,
+          documents: prev.documents.map(d => d.id === activeDoc.id ? { ...d, files: (d.files || []).filter(f => f.id !== fileId) } : d)
+        }));
+      };
+
+      const toggleWorkflowStep = (docId, stepIndex) => {
+        updateDataAndCloud(prev => {
+          const docs = prev.documents.map(doc => {
+            if (doc.id !== docId) return doc;
+            const newWorkflow = [...doc.workflow];
+            const currentStep = newWorkflow[stepIndex];
+            if (stepIndex > 0 && !newWorkflow[stepIndex - 1].done && !currentStep.done) {
+              alert(`Abhängigkeit beachten: Schritt ${stepIndex} muss zuerst abgeschlossen werden!`);
+              return doc;
+            }
+            const nowDone = !currentStep.done;
+            newWorkflow[stepIndex] = { ...currentStep, done: nowDone, completedAt: nowDone ? new Date().toLocaleDateString("de-DE") : null };
+
+            if (nowDone && stepIndex + 1 < newWorkflow.length) {
+              const nextStep = newWorkflow[stepIndex + 1];
+              const personA = getMember(currentStep.memberId);
+              const personB = getMember(nextStep.memberId);
+              setNotificationModal({
+                title: "Vorarbeit erledigt! Nächste Person benachrichtigen?",
+                recipient: personB,
+                message: `Hallo ${personB.name}! 👋\n${personA.name} hat "${currentStep.title}" im Beitrag "${doc.title}" (NRM) fertiggestellt.\nDu kannst jetzt mit "${nextStep.title}" starten (Abgabe: ${doc.deadline}).`
+              });
+            }
+            return { ...doc, workflow: newWorkflow };
+          });
+          return { ...prev, documents: docs };
+        });
+      };
+
+      const filteredDocs = selectedCategory === "Alle"
+        ? (data.documents || [])
+        : (data.documents || []).filter(d => d.category === selectedCategory);
+
+
+      const toDateKey = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      };
+
+      const calendarDays = (() => {
+        const year = calendarDate.getFullYear();
+        const month = calendarDate.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const mondayOffset = (firstDay.getDay() + 6) % 7;
+        const start = new Date(year, month, 1 - mondayOffset);
+        return Array.from({ length: 42 }, (_, index) => {
+          const day = new Date(start);
+          day.setDate(start.getDate() + index);
+          return day;
+        });
+      })();
+
+      const openMeetingForm = (date = new Date()) => {
+        setMeetingForm({ title: "", date: toDateKey(date), time: "", location: "", type: "Treffen" });
+        setShowMeetingForm(true);
+      };
+
+      const saveMeeting = (event) => {
+        event.preventDefault();
+        if (!meetingForm.title.trim() || !meetingForm.date || !meetingForm.time) {
+          alert("Bitte Titel, Datum und Uhrzeit ausfüllen.");
+          return;
+        }
+        const newMeeting = {
+          id: "mt_" + Date.now(),
+          title: meetingForm.title.trim(),
+          date: meetingForm.date,
+          time: meetingForm.time,
+          location: meetingForm.location.trim(),
+          type: meetingForm.type
+        };
+        updateDataAndCloud(prev => ({ ...prev, meetings: [...(prev.meetings || []), newMeeting] }));
+        setShowMeetingForm(false);
+      };
+
+      const deleteMeeting = (meetingId) => {
+        if (!confirm("Termin wirklich löschen?")) return;
+        updateDataAndCloud(prev => ({ ...prev, meetings: (prev.meetings || []).filter(m => m.id !== meetingId) }));
+      };
+
+      const changeMonth = (offset) => {
+        setCalendarDate(prev => new Date(prev.getFullYear(), prev.getMonth() + offset, 1));
+      };
+
+      const monthLabel = calendarDate.toLocaleDateString("de-AT", { month: "long", year: "numeric" });
+
+      return (
+        <div className="min-h-screen flex flex-col bg-orange-50/30">
+          <header className="bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 text-white shadow-md sticky top-0 z-30 border-b border-orange-700/20">
+            <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-14 h-12 rounded-2xl bg-white/95 px-1.5 py-1 flex items-center justify-center shadow-md border border-orange-200 shrink-0">
+                  <img src={logoSrc} alt="Logo" className="max-h-full max-w-full object-contain" />
+                </div>
+                <div>
+                  <h1 className="font-extrabold text-lg sm:text-xl leading-tight tracking-tight text-white">
+                    Nachrichten- und Redaktionsmedium (NRM)
+                  </h1>
+                  <p className="text-xs text-orange-100 font-medium">
+                    <span>{syncStatus}</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <main className="flex-1 max-w-7xl w-full mx-auto p-4">
+            <nav className="mb-5 flex flex-wrap gap-2" aria-label="Hauptnavigation">
+              <button onClick={() => setActiveTab("documents")} className={`px-4 py-2 rounded-xl font-bold text-sm transition ${activeTab === "documents" ? "bg-orange-600 text-white shadow" : "bg-white text-slate-700 border border-orange-200"}`}>
+                <i className="fa-solid fa-file-lines mr-2"></i>Beiträge
+              </button>
+              <button onClick={() => setActiveTab("calendar")} className={`px-4 py-2 rounded-xl font-bold text-sm transition ${activeTab === "calendar" ? "bg-orange-600 text-white shadow" : "bg-white text-slate-700 border border-orange-200"}`}>
+                <i className="fa-solid fa-calendar-days mr-2"></i>Kalender
+              </button>
+            </nav>
+
+            {activeTab === "documents" ? (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-3 space-y-4">
+                <div className="bg-white rounded-2xl p-4 shadow-sm border border-orange-200/70">
+                  <h2 className="font-bold text-sm uppercase tracking-wider text-orange-700 mb-3">Beiträge</h2>
+                  <div className="space-y-2">
+                    {filteredDocs.map(doc => (
+                      <div
+                        key={doc.id}
+                        onClick={() => setSelectedDocId(doc.id)}
+                        className={`p-3 rounded-xl border cursor-pointer transition ${activeDoc.id === doc.id ? "bg-orange-50 border-orange-500 shadow-sm" : "bg-white border-slate-200"}`}
+                      >
+                        <h4 className="font-bold text-sm text-slate-800">{doc.title}</h4>
+                        <span className="text-xs text-orange-600 font-medium">Fortschritt: {getProgress(doc)}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {activeDoc.id ? (
+                <div className="lg:col-span-9 space-y-6">
+                  <div className="bg-white rounded-2xl p-5 shadow-sm border border-orange-200/70">
+                    <h2 className="text-2xl font-bold text-slate-900 mb-1">{activeDoc.title}</h2>
+                    <p className="text-sm text-slate-600 mb-4">{activeDoc.description}</p>
+
+                    <div className="space-y-3 mb-6">
+                      <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500">Abhängigkeits-Kette (Echtzeit)</h4>
+                      {(activeDoc.workflow || []).map((w, idx) => (
+                        <div key={w.id} className={`p-3 rounded-xl border flex items-center justify-between ${w.done ? "bg-emerald-50 border-emerald-200" : "bg-orange-50/50 border-orange-300"}`}>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => toggleWorkflowStep(activeDoc.id, idx)}
+                              className={`w-6 h-6 rounded-lg font-bold text-xs flex items-center justify-center ${w.done ? "bg-emerald-600 text-white" : "bg-white border-2 border-orange-600 text-orange-600"}`}
+                            >
+                              {w.done ? <i className="fa-solid fa-check"></i> : idx + 1}
+                            </button>
+                            <span className={`text-sm font-semibold ${w.done ? "line-through text-slate-500" : "text-slate-900"}`}>{w.title}</span>
+                          </div>
+                          <span className="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded-md font-medium">{getMember(w.memberId).name}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="p-4 bg-orange-50/70 border border-orange-200 rounded-xl space-y-3">
+                      <h4 className="font-bold text-xs uppercase tracking-wider text-orange-800">Dateien hochladen & in der Cloud teilen</h4>
+                      <input type="file" onChange={handleFileUpload} className="text-xs file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-orange-600 file:text-white hover:file:bg-orange-700 cursor-pointer" />
+                      
+                      <div className="space-y-2 mt-3">
+                        {(activeDoc.files || []).map(file => (
+                          <div key={file.id} className="p-2.5 bg-white rounded-lg border border-slate-200 flex items-center justify-between text-xs">
+                            <div>
+                              <span className="font-bold">{file.name}</span> <span className="text-slate-400">({file.uploadedBy})</span>
+                            </div>
+                            <div className="flex gap-2">
+                              <a href={file.dataUrl} download={file.name} className="px-2 py-1 bg-orange-600 text-white rounded font-semibold">Herunterladen</a>
+                              <button onClick={() => deleteFile(file.id)} className="text-red-600"><i className="fa-solid fa-trash"></i></button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="lg:col-span-9 bg-white rounded-2xl p-8 text-center">Bitte Beitrag auswählen.</div>
+              )}
+            </div>
+            ) : (
+              <section className="space-y-5">
+                <div className="bg-white rounded-2xl border border-orange-200/70 shadow-sm p-4 sm:p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                    <div>
+                      <h2 className="text-2xl font-extrabold text-slate-900 capitalize">{monthLabel}</h2>
+                      <p className="text-sm text-slate-500">Termine werden live mit Firestore synchronisiert.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button onClick={() => changeMonth(-1)} className="w-10 h-10 rounded-xl border border-orange-200 bg-white hover:bg-orange-50" aria-label="Voriger Monat"><i className="fa-solid fa-chevron-left"></i></button>
+                      <button onClick={() => setCalendarDate(new Date())} className="px-3 h-10 rounded-xl border border-orange-200 bg-white hover:bg-orange-50 font-semibold text-sm">Heute</button>
+                      <button onClick={() => changeMonth(1)} className="w-10 h-10 rounded-xl border border-orange-200 bg-white hover:bg-orange-50" aria-label="Nächster Monat"><i className="fa-solid fa-chevron-right"></i></button>
+                      <button onClick={() => openMeetingForm(new Date())} className="px-4 h-10 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-sm"><i className="fa-solid fa-plus mr-2"></i>Termin</button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-7 text-center text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">
+                    {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map(day => <div key={day} className="py-2">{day}</div>)}
+                  </div>
+                  <div className="grid grid-cols-7 border-l border-t border-slate-200">
+                    {calendarDays.map(day => {
+                      const dateKey = toDateKey(day);
+                      const dayMeetings = (data.meetings || []).filter(meeting => meeting.date === dateKey).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+                      const inCurrentMonth = day.getMonth() === calendarDate.getMonth();
+                      const isToday = dateKey === toDateKey(new Date());
+                      return (
+                        <button type="button" key={dateKey} onClick={() => openMeetingForm(day)} className={`min-h-28 p-1.5 sm:p-2 text-left border-r border-b border-slate-200 align-top hover:bg-orange-50 transition ${inCurrentMonth ? "bg-white" : "bg-slate-50 text-slate-400"}`}>
+                          <span className={`inline-flex w-7 h-7 items-center justify-center rounded-full text-sm font-bold ${isToday ? "bg-orange-600 text-white" : ""}`}>{day.getDate()}</span>
+                          <div className="mt-1 space-y-1">
+                            {dayMeetings.slice(0, 3).map(meeting => (
+                              <div key={meeting.id} className={`truncate rounded px-1.5 py-1 text-[10px] sm:text-xs font-semibold ${meeting.type === "Abgabe" ? "bg-red-100 text-red-800" : "bg-orange-100 text-orange-900"}`} title={`${meeting.time} ${meeting.title}`}>
+                                {meeting.time} {meeting.title}
+                              </div>
+                            ))}
+                            {dayMeetings.length > 3 && <div className="text-[10px] text-slate-500">+{dayMeetings.length - 3} weitere</div>}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-orange-200/70 shadow-sm p-5">
+                  <h3 className="font-extrabold text-lg mb-3">Alle Termine</h3>
+                  <div className="space-y-2">
+                    {(data.meetings || []).slice().sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`)).map(meeting => (
+                      <div key={meeting.id} className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl border border-slate-200">
+                        <div>
+                          <div className="font-bold text-slate-900">{meeting.title}</div>
+                          <div className="text-sm text-slate-500">{new Date(meeting.date + "T00:00:00").toLocaleDateString("de-AT")} · {meeting.time}{meeting.location ? ` · ${meeting.location}` : ""}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-bold px-2 py-1 rounded-full ${meeting.type === "Abgabe" ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-800"}`}>{meeting.type}</span>
+                          <button onClick={() => deleteMeeting(meeting.id)} className="w-9 h-9 rounded-lg text-red-600 hover:bg-red-50" aria-label={`${meeting.title} löschen`}><i className="fa-solid fa-trash"></i></button>
+                        </div>
+                      </div>
+                    ))}
+                    {(data.meetings || []).length === 0 && <p className="text-sm text-slate-500">Noch keine Termine vorhanden.</p>}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {showMeetingForm && (
+              <div className="fixed inset-0 z-50 bg-slate-900/50 p-4 flex items-center justify-center" onMouseDown={() => setShowMeetingForm(false)}>
+                <form onSubmit={saveMeeting} onMouseDown={e => e.stopPropagation()} className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-extrabold">Neuen Termin eintragen</h2>
+                    <button type="button" onClick={() => setShowMeetingForm(false)} className="w-9 h-9 rounded-lg hover:bg-slate-100" aria-label="Schließen"><i className="fa-solid fa-xmark"></i></button>
+                  </div>
+                  <label className="block text-sm font-bold">Titel *<input autoFocus value={meetingForm.title} onChange={e => setMeetingForm({ ...meetingForm, title: e.target.value })} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-normal" placeholder="z. B. Redaktionssitzung" /></label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="block text-sm font-bold">Datum *<input type="date" value={meetingForm.date} onChange={e => setMeetingForm({ ...meetingForm, date: e.target.value })} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-normal" /></label>
+                    <label className="block text-sm font-bold">Uhrzeit *<input type="time" value={meetingForm.time} onChange={e => setMeetingForm({ ...meetingForm, time: e.target.value })} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-normal" /></label>
+                  </div>
+                  <label className="block text-sm font-bold">Ort oder Meeting-Link<input value={meetingForm.location} onChange={e => setMeetingForm({ ...meetingForm, location: e.target.value })} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-normal" placeholder="Besprechungsraum oder Teams-Link" /></label>
+                  <label className="block text-sm font-bold">Art<select value={meetingForm.type} onChange={e => setMeetingForm({ ...meetingForm, type: e.target.value })} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-normal bg-white"><option>Treffen</option><option>Abgabe</option></select></label>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button type="button" onClick={() => setShowMeetingForm(false)} className="px-4 py-2 rounded-xl border border-slate-300 font-bold">Abbrechen</button>
+                    <button type="submit" className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold">Termin speichern</button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </main>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
